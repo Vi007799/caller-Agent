@@ -1,0 +1,21 @@
+{
+  "name": "builder-call-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Hinglish outbound property-sales voice-agent backend",
+  "scripts": {
+    "start": "node src/server.mjs",
+    "dev": "node --watch src/server.mjs",
+    "test": "node --test",
+    "demo": "node src/demo.mjs",
+    "start:env": "node --env-file=.env src/server.mjs"
+  },
+  "engines": {
+    "node": ">=20.6"
+  },
+  "dependencies": {
+    "pdf-parse": "^2.4.5",
+    "xlsx": "^0.18.5"
+  }
+}
