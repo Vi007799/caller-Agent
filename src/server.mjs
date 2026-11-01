@@ -39,13 +39,13 @@ async function readJson(request) {
   let raw = "";
   for await (const chunk of request) {
     raw += chunk;
-    if (raw.length > 100000) throw new Error("Request body is too large.");
+    if (raw.length > 100000) throw new Error("Request body too large.");
   }
   if (!raw) return {};
   try {
     return JSON.parse(raw);
   } catch {
-    throw new Error("Request body must be valid JSON.");
+    throw new Error("Invalid JSON body.");
   }
 }
 
@@ -55,7 +55,7 @@ async function readMultipart(request) {
     raw += chunk;
   }
   const boundary = request.headers["content-type"]?.split("boundary=")[1];
-  if (!boundary) throw new Error("No boundary found in content-type.");
+  if (!boundary) throw new Error("No boundary found.");
 
   const parts = raw.split("--" + boundary);
   const files = [];
@@ -81,8 +81,8 @@ function requestedProperty(lead, propertyId) {
 
 function checkLead(lead) {
   if (!lead) return "Lead not found.";
-  if (!lead.consentToCall) return "This lead has not consented to calls.";
-  if (lead.optOut) return "This lead is marked do not call.";
+  if (!lead.consentToCall) return "No consent to call.";
+  if (lead.optOut) return "Lead is opted out.";
   return null;
 }
 
@@ -198,15 +198,15 @@ function addLeads(items, attested) {
     const phone = normalizePhone(item.phone);
     const name = String(item.name || "").trim().slice(0, 80);
     if (!name || name.length < 2) {
-      skipped.push({ name: item.name || "(blank)", reason: "Name is too short or missing." });
+      skipped.push({ name: item.name || "(blank)", reason: "Name too short." });
       continue;
     }
     if (!phone || !/^\d{10,15}$/.test(phone)) {
-      skipped.push({ name, reason: "Invalid phone number. Must be 10-15 digits." });
+      skipped.push({ name, reason: "Invalid phone." });
       continue;
     }
     if (leads.some((l) => l.phone && normalizePhone(l.phone) === phone)) {
-      skipped.push({ name, reason: "Number already added." });
+      skipped.push({ name, reason: "Already exists." });
       continue;
     }
     const lead = {
@@ -245,7 +245,7 @@ const server = http.createServer(async (request, response) => {
   try {
     if (request.method === "GET" && (url.pathname === "/" || url.pathname === "/index.html")) {
       const file = path.join(publicDir, "index.html");
-      if (!fs.existsSync(file)) return send(response, 404, { error: "public/index.html not found." });
+      if (!fs.existsSync(file)) return send(response, 404, { error: "index.html not found." });
       response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
       return response.end(fs.readFileSync(file));
     }
@@ -253,24 +253,23 @@ const server = http.createServer(async (request, response) => {
     const adminOnly = url.pathname.startsWith("/api/leads") || url.pathname.startsWith("/api/calls/") ||
 url.pathname === "/api/dashboard" || url.pathname.startsWith("/api/admin");
     if (adminOnly && !isAdmin(request)) {
-      return send(response, 401, { error: "Admin access required. Set ADMIN_KEY and send it as the
-x-admin-key header." });
+      return send(response, 401, { error: "Admin access required." });
     }
 
     if (request.method === "GET" && url.pathname === "/admin") {
       const file = path.join(publicDir, "admin.html");
-      if (!fs.existsSync(file)) return send(response, 404, { error: "public/admin.html not found." });
+      if (!fs.existsSync(file)) return send(response, 404, { error: "admin.html not found." });
       response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
       return response.end(fs.readFileSync(file));
     }
 
     if (request.method === "GET" && url.pathname === "/api/admin/script") {
-      return send(response, 200, { script: loadAgentScript()?.prompt || "No script defined." });
+      return send(response, 200, { script: loadAgentScript()?.prompt || "No script." });
     }
 
     if (request.method === "POST" && url.pathname === "/api/admin/script") {
       const body = await readJson(request);
-      if (!body.prompt) return send(response, 400, { error: "Prompt is required." });
+      if (!body.prompt) return send(response, 400, { error: "Prompt required." });
       saveAgentScript({ prompt: body.prompt });
       return send(response, 200, { ok: true });
     }
@@ -278,7 +277,7 @@ x-admin-key header." });
     if (request.method === "POST" && url.pathname === "/api/admin/run-wave") {
       const body = await readJson(request);
       const waveType = body.waveType;
-      if (!waveType) return send(response, 400, { error: "waveType is required." });
+      if (!waveType) return send(response, 400, { error: "waveType required." });
 
       const now = new Date();
       const eligibleLeads = leads.filter((l) => {
@@ -314,14 +313,13 @@ outbound.body.callId });
     if (request.method === "POST" && url.pathname === "/api/admin/leads/update") {
       const body = await readJson(request);
       const { leadId, updates } = body;
-      if (!leadId) return send(response, 400, { error: "leadId is required." });
+      if (!leadId) return send(response, 400, { error: "leadId required." });
       const lead = getLead(leadId);
       if (!lead) return send(response, 404, { error: "Lead not found." });
       if (updates.fullName) lead.fullName = String(updates.fullName).trim();
       if (updates.phone) {
         const normalized = normalizePhone(updates.phone);
-        if (!/^\d{10,15}$/.test(normalized)) return send(response, 400, { error: "Invalid phone format."
-});
+        if (!/^\d{10,15}$/.test(normalized)) return send(response, 400, { error: "Invalid phone." });
         lead.phone = normalized;
       }
       if (updates.interest) lead.enquiry.interest = String(updates.interest).trim();
@@ -344,8 +342,7 @@ scheduledBy: "admin" });
     if (request.method === "POST" && url.pathname === "/api/leads") {
       const body = await readJson(request);
       if (body.consentConfirmed !== true) {
-        return send(response, 400, { error: "Confirm that these leads have consented to calls and were
-checked against DND before adding them." });
+        return send(response, 400, { error: "Consent required." });
       }
       const items = Array.isArray(body.leads) ? body.leads.slice(0, 500) : [];
       const added = addLeads(items, true);
@@ -356,7 +353,7 @@ checked against DND before adding them." });
     if (request.method === "POST" && url.pathname === "/api/leads/upload") {
       try {
         const files = await readMultipart(request);
-        if (files.length === 0) return send(response, 400, { error: "No file uploaded." });
+        if (files.length === 0) return send(response, 400, { error: "No file." });
         const file = files[0];
         let leadData = [];
         if (file.name.endsWith(".xlsx") || file.name.endsWith(".xls")) {
@@ -373,7 +370,7 @@ checked against DND before adding them." });
 BHK", language: "hinglish" };
           });
         } else {
-          return send(response, 400, { error: "Unsupported file format. Use .xlsx or .pdf" });
+          return send(response, 400, { error: "Unsupported format." });
         }
         const items = leadData.map(d => ({
           name: d.name || d.FullName || d.CustomerName || "Unknown",
@@ -423,15 +420,12 @@ Math.random().toString(36).slice(2);
     if (request.method === "POST" && url.pathname === "/api/web/enquiry") {
       const ip = String(request.headers["x-forwarded-for"] ||
 request.socket.remoteAddress).split(",")[0].trim();
-      if (tooManyEnquiries(ip)) return send(response, 429, { message: "Too many requests. Please try again
-later." });
+      if (tooManyEnquiries(ip)) return send(response, 429, { message: "Too many requests." });
       const body = await readJson(request);
       const phone = normalizePhone(body.phone);
       const name = String(body.name || "").trim().slice(0, 80);
-      if (!name || !phone) return send(response, 400, { message: "Please enter your name and a valid mobile
-number." });
-      if (body.consent !== true) return send(response, 400, { message: "Please tick the consent box so we
-can call you." });
+      if (!name || !phone) return send(response, 400, { message: "Name/Phone required." });
+      if (body.consent !== true) return send(response, 400, { message: "Consent required." });
       const property = properties[0];
       const interest = body.interest === "4 BHK" ? "4 BHK" : "3 BHK";
       const lead = {
@@ -451,18 +445,15 @@ can call you." });
       logEvent({ event: "web_enquiry", leadId: lead.id });
       const blocked = callBlockReason(lead, { callLogs });
       if (blocked) {
-        return send(response, 200, { message: "Thank you, " + lead.firstName + "! Our team will call you
-during calling hours (10 am to 7 pm)." });
+        return send(response, 200, { message: "Thank you! Our team will call you soon." });
       }
       const outbound = await startOutboundCall({ lead, property });
       if (outbound.statusCode === 202) {
         logEvent({ event: "call_started", leadId: lead.id, propertyId: property.id, callId:
 outbound.body.callId });
-        return send(response, 200, { message: "Thank you, " + lead.firstName + "! Our advisor is calling
-you now." });
+        return send(response, 200, { message: "Thank you! Our advisor is calling you now." });
       }
-      return send(response, 200, { message: "Thank you, " + lead.firstName + "! We have your request and
-our team will call you shortly." });
+      return send(response, 200, { message: "Thank you! We will call you shortly." });
     }
 
     if (request.method === "GET" && url.pathname === "/health") {
@@ -567,8 +558,7 @@ outbound.body.callId });
 
     if (request.method === "POST" && url.pathname === "/api/calls/start-all") {
       const body = await readJson(request);
-      if (body.confirm !== true) return send(response, 400, { error: 'Send {"confirm": true} to start
-calling all eligible leads.' });
+      if (body.confirm !== true) return send(response, 400, { error: 'Send {"confirm": true}.' });
       const gapMs = Number(process.env.SECONDS_BETWEEN_CALLS || 30) * 1000;
       const limit = Number(body.limit || 20);
       const results = [];
@@ -577,8 +567,8 @@ calling all eligible leads.' });
         const blocked = callBlockReason(lead, { callLogs });
         if (blocked) { results.push({ leadId: lead.id, status: "skipped", reason: blocked }); continue; }
         const property = requestedProperty(lead);
-        if (!property) { results.push({ leadId: lead.id, status: "skipped", reason: "Property not found."
-}); continue; }
+        if (!property) { results.push({ leadId: lead.id, status: "skipped", reason: "No property." });
+continue; }
         const outbound = await startOutboundCall({ lead, property });
         if (outbound.statusCode === 202) {
           logEvent({ event: "call_started", leadId: lead.id, propertyId: property.id, callId:
@@ -610,15 +600,15 @@ outbound.body.callId });
           if (name === "mark_opt_out" && lead) {
             applyOptOut(lead);
             logEvent({ event: "opt_out", leadId, callId: message.call?.id });
-            result = "Opt-out recorded. Confirm no further calls and end the call politely.";
+            result = "Opt-out recorded. End call politely.";
           } else if (name === "request_site_visit") {
             logEvent({ event: "site_visit_requested", leadId, callId: message.call?.id, preferredTime:
 args.preferredTime });
-            result = "Site visit request saved. The sales team will confirm the appointment.";
+            result = "Visit request saved.";
           } else if (name === "request_human_callback") {
             logEvent({ event: "human_callback_requested", leadId, callId: message.call?.id, reason:
 args.reason });
-            result = "Callback request saved. A sales advisor will call back.";
+            result = "Callback request saved.";
           }
           return { toolCallId: tc.id, result };
         });
@@ -639,21 +629,448 @@ args.reason });
       return send(response, 200, { ok: true });
     }
 
-    return send(response, 404, {
-      error: "Route not found.",
-      routes: [
-        "GET /health",
-        "GET /api/properties",
-        "GET /api/leads",
-        "POST /api/calls/preview",
-        "POST /api/calls/turn",
-        "POST /api/calls/start",
-        "POST /api/calls/start-all",
-        "POST /api/vapi/webhook"
-      ]
-    });
+    return send(response, 404, { error: "Route not found." });
   } catch (error) {
-    return send(response, 400, { error: error.message || "Unexpected request error." });
+    return send(response, 400, { error: error.message || "Request error." });
+  }
+});
+
+setInterval(async () => {
+      if (updates.fullName) lead.fullName = String(updates.fullName).trim();
+      if (updates.phone) {
+        const normalized = normalizePhone(updates.phone);
+        if (!/^\d{10,15}$/.test(normalized)) return send(response, 400, { error: "Invalid phone." });
+        lead.phone = normalized;
+      }
+      if (updates.interest) lead.enquiry.interest = String(updates.interest).trim();
+      if (updates.budget) lead.enquiry.budget = String(updates.budget).trim();
+      saveLeadsFile(leads);
+      return send(response, 200, { ok: true, lead });
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/admin/schedule") {
+      const body = await readJson(request);
+      const lead = getLead(body.leadId);
+      if (!lead) return send(response, 404, { error: "Lead not found." });
+      lead.nextCallTime = body.nextCallTime;
+      saveLeadsFile(leads);
+      logEvent({ event: "callback_scheduled", leadId: lead.id, nextCallTime: lead.nextCallTime, scheduledBy: "admin" });
+      return send(response, 200, { ok: true });
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/leads") {
+      const body = await readJson(request);
+      if (body.consentConfirmed !== true) {
+        return send(response, 400, { error: "Consent required." });
+      }
+      const items = Array.isArray(body.leads) ? body.leads.slice(0, 500) : [];
+      const added = addLeads(items, true);
+      saveLeadsFile(leads);
+      return send(response, 200, added);
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/leads/upload") {
+      try {
+        const files = await readMultipart(request);
+        if (files.length === 0) return send(response, 400, { error: "No file." });
+        const file = files[0];
+        let leadData = [];
+        if (file.name.endsWith(".xlsx") || file.name.endsWith(".xls")) {
+          const workbook = xlsx.read(file.data, { type: "buffer" });
+          const sheetName = workbook.SheetNames[0];
+          leadData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
+        } else if (file.name.endsWith(".pdf")) {
+          const pdfData = await pdf(file.data);
+          const text = pdfData.text;
+          const lines = text.split("\n").filter(l => l.trim());
+          leadData = lines.map(line => {
+            const parts = line.split(/[,|]/);
+            return { name: parts[0]?.trim(), phone: parts[1]?.trim(), interest: parts[2]?.trim() || "3 BHK", language: "hinglish" };
+          });
+        } else {
+          return send(response, 400, { error: "Unsupported format." });
+        }
+        const items = leadData.map(d => ({
+          name: d.name || d.FullName || d.CustomerName || "Unknown",
+          phone: d.phone || d.Phone || d.Mobile || "",
+          language: d.language || "hinglish",
+          interest: d.interest || d.Interest || d.Enquiry || "3 BHK",
+          budget: d.budget || d.Budget || null
+        }));
+        return send(response, 200, addLeads(items, true));
+      } catch (err) {
+        return send(response, 500, { error: "Upload failed: " + err.message });
+      }
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/leads/optout") {
+      const body = await readJson(request);
+      const lead = getLead(body.leadId);
+      if (!lead) return send(response, 404, { error: "Lead not found." });
+      applyOptOut(lead);
+      logEvent({ event: "manual_opt_out", leadId: lead.id });
+      return send(response, 200, { ok: true });
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/web/chat") {
+      const body = await readJson(request);
+      const property = properties[0];
+      const visitor = { id: "web-visitor", firstName: "there", fullName: "Website visitor", preferredLanguage: "hinglish", consentToCall: true, optOut: false, enquiry: { propertyId: property.id, interest: "a home" } };
+      const id = typeof body.sessionId === "string" && body.sessionId ? body.sessionId : "web:" + Math.random().toString(36).slice(2);
+      if (!sessions.has(id)) sessions.set(id, { ...createInitialState(), opened: true });
+      const state = sessions.get(id);
+      const message = String(body.message || "").slice(0, 500);
+      const result = await generateTurn(visitor, property, message, state);
+      state.transcript.push({ role: "lead", text: message }, { role: "agent", text: result.turn.spokenText });
+      state.disposition = result.turn.disposition;
+      return send(response, 200, {
+        sessionId: id,
+        reply: result.turn.spokenText,
+        intent: result.turn.intent,
+        handoff: result.turn.handoffRequired === true
+      });
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/web/enquiry") {
+      const ip = String(request.headers["x-forwarded-for"] || request.socket.remoteAddress).split(",")[0].trim();
+      if (tooManyEnquiries(ip)) return send(response, 429, { message: "Too many requests." });
+      const body = await readJson(request);
+      const phone = normalizePhone(body.phone);
+      const name = String(body.name || "").trim().slice(0, 80);
+      if (!name || !phone) return send(response, 400, { message: "Name/Phone required." });
+      if (body.consent !== true) return send(response, 400, { message: "Consent required." });
+      const property = properties[0];
+      const interest = body.interest === "4 BHK" ? "4 BHK" : "3 BHK";
+      const lead = {
+        id: "web-" + Date.now().toString(36),
+        fullName: name,
+        firstName: name.split(" ")[0],
+        phone,
+        preferredLanguage: "hinglish",
+        consentToCall: true,
+        dndChecked: process.env.WEB_LEADS_DND_CLEARED === "true",
+        optOut: false,
+        source: "website",
+        enquiry: { propertyId: property.id, interest, budget: null }
+      };
+      leads.push(lead);
+      saveWebLead(lead);
+      logEvent({ event: "web_enquiry", leadId: lead.id });
+      const blocked = callBlockReason(lead, { callLogs });
+      if (blocked) {
+        return send(response, 200, { message: "Thank you! Our team will call you soon." });
+      }
+      const outbound = await startOutboundCall({ lead, property });
+      if (outbound.statusCode === 202) {
+        logEvent({ event: "call_started", leadId: lead.id, propertyId: property.id, callId: outbound.body.callId });
+        return send(response, 200, { message: "Thank you! Our advisor is calling you now." });
+      }
+      return send(response, 200, { message: "Thank you! We will call you shortly." });
+    }
+
+    if (request.method === "GET" && url.pathname === "/health") {
+      return send(response, 200, {
+        status: "ok",
+        builder: builder.name,
+        liveCallingEnabled: process.env.OUTBOUND_CALLING_ENABLED === "true",
+        configuredProvider: process.env.LLM_PROVIDER || "rule-based"
+      });
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/properties") {
+      return send(response, 200, { properties: properties.map(publicProperty) });
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/leads") {
+      return send(response, 200, { leads: leads.map(publicLead) });
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/calls/logs") {
+      return send(response, 200, { calls: callLogs });
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/calls/preview") {
+      const body = await readJson(request);
+      const lead = getLead(body.leadId);
+      const error = checkLead(lead);
+      if (error) return send(response, 409, { error });
+      const property = requestedProperty(lead, body.propertyId);
+      if (!property) return send(response, 404, { error: "Property not found." });
+      return send(response, 200, {
+        callBrief: createCallBrief(lead, property),
+        lead: publicLead(lead),
+        property: publicProperty(property)
+      });
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/calls/turn") {
+      const body = await readJson(request);
+      const lead = getLead(body.leadId);
+      const error = checkLead(lead);
+      if (error) return send(response, 409, { error });
+      const property = requestedProperty(lead, body.propertyId);
+      if (!property) return send(response, 404, { error: "Property not found." });
+
+      const session = sessionFor(lead, property, body.sessionId);
+      const callerSaid = typeof body.callerSaid === "string" ? body.callerSaid : "";
+      const result = await generateTurn(lead, property, callerSaid, session.state);
+
+      if (callerSaid) session.state.transcript.push({ role: "lead", text: callerSaid });
+      session.state.transcript.push({ role: "agent", text: result.turn.spokenText });
+      session.state.disposition = result.turn.disposition;
+
+      if (result.turn.disposition === "opt_out" || result.turn.captured.optOut === true) {
+        applyOptOut(lead);
+      }
+
+      if (result.turn.disposition === "callback_requested" || result.turn.captured.callbackTime) {
+        const time = result.turn.captured.callbackTime || "tomorrow";
+        const nextCall = new Date();
+        if (time === "tomorrow") nextCall.setDate(nextCall.getDate() + 1);
+        else nextCall.setHours(11, 0, 0, 0);
+        lead.nextCallTime = nextCall.toISOString();
+        logEvent({ event: "callback_scheduled", leadId: lead.id, nextCallTime: lead.nextCallTime });
+      }
+
+      const record = {
+        at: new Date().toISOString(),
+        sessionId: session.id,
+        leadId: lead.id,
+        propertyId: property.id,
+        intent: result.turn.intent,
+        disposition: result.turn.disposition,
+        nextAction: result.turn.nextAction
+      };
+      callLogs.push(record);
+
+      return send(response, 200, {
+        sessionId: session.id,
+        provider: result.provider,
+        fallbackReason: result.fallbackReason,
+        agent: result.turn,
+        leadStatus: { optOut: lead.optOut },
+        log: record
+      });
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/calls/start") {
+      const body = await readJson(request);
+      const lead = getLead(body.leadId);
+      const blocked = callBlockReason(lead, { callLogs });
+      if (blocked) return send(response, 409, { error: blocked });
+      const property = requestedProperty(lead, body.propertyId);
+      if (!property) return send(response, 404, { error: "Property not found." });
+      const outbound = await startOutboundCall({ lead, property });
+      if (outbound.statusCode === 202) {
+        logEvent({ event: "call_started", leadId: lead.id, propertyId: property.id, callId: outbound.body.callId });
+      }
+      return send(response, outbound.statusCode, outbound.body);
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/calls/start-all") {
+      const body = await readJson(request);
+      if (body.confirm !== true) return send(response, 400, { error: 'Send {"confirm": true}.' });
+      const gapMs = Number(process.env.SECONDS_BETWEEN_CALLS || 30) * 1000;
+      if (!property) return send(response, 404, { error: "Property not found." });
+
+      const session = sessionFor(lead, property, body.sessionId);
+      const callerSaid = typeof body.callerSaid === "string" ? body.callerSaid : "";
+      const result = await generateTurn(lead, property, callerSaid, session.state);
+
+      if (callerSaid) session.state.transcript.push({ role: "lead", text: callerSaid });
+      session.state.transcript.push({ role: "agent", text: result.turn.spokenText });
+      session.state.disposition = result.turn.disposition;
+
+      if (result.turn.disposition === "opt_out" || result.turn.captured.optOut === true) {
+        applyOptOut(lead);
+      }
+
+      if (result.turn.disposition === "callback_requested" || result.turn.captured.callbackTime) {
+        const time = result.turn.captured.callbackTime || "tomorrow";
+        const nextCall = new Date();
+        if (time === "tomorrow") nextCall.setDate(nextCall.getDate() + 1);
+        else nextCall.setHours(11, 0, 0, 0);
+        lead.nextCallTime = nextCall.toISOString();
+        logEvent({ event: "callback_scheduled", leadId: lead.id, nextCallTime: lead.nextCallTime });
+      }
+
+      const record = {
+        at: new Date().toISOString(),
+        sessionId: session.id,
+        leadId: lead.id,
+        propertyId: property.id,
+        intent: result.turn.intent,
+        disposition: result.turn.disposition,
+        nextAction: result.turn.nextAction
+      };
+      callLogs.push(record);
+
+      return send(response, 200, {
+        sessionId: session.id,
+        provider: result.provider,
+        fallbackReason: result.fallbackReason,
+        agent: result.turn,
+        leadStatus: { optOut: lead.optOut },
+        log: record
+      });
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/calls/start") {
+      const body = await readJson(request);
+      const lead = getLead(body.leadId);
+      const blocked = callBlockReason(lead, { callLogs });
+      if (blocked) return send(response, 409, { error: blocked });
+      const property = requestedProperty(lead, body.propertyId);
+      if (!property) return send(response, 404, { error: "Property not found." });
+      const outbound = await startOutboundCall({ lead, property });
+      if (outbound.statusCode === 202) {
+        logEvent({ event: "call_started", leadId: lead.id, propertyId: property.id, callId: outbound.body.callId });
+      }
+      return send(response, outbound.statusCode, outbound.body);
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/calls/start-all") {
+      const body = await readJson(request);
+      if (body.confirm !== true) return send(response, 400, { error: 'Send {"confirm": true}.' });
+      const gapMs = Number(process.env.SECONDS_BETWEEN_CALLS || 30) * 1000;
+      const limit = Number(body.limit || 20);
+      const results = [];
+      for (const lead of leads) {
+        if (results.filter((r) => r.status === "call_started").length >= limit) break;
+        const blocked = callBlockReason(lead, { callLogs });
+        if (blocked) { results.push({ leadId: lead.id, status: "skipped", reason: blocked }); continue; }
+        const property = requestedProperty(lead);
+        if (!property) { results.push({ leadId: lead.id, status: "skipped", reason: "No property." }); continue; }
+        const outbound = await startOutboundCall({ lead, property });
+        if (outbound.statusCode === 202) {
+          logEvent({ event: "call_started", leadId: lead.id, propertyId: property.id, callId: outbound.body.callId });
+          results.push({ leadId: lead.id, status: "call_started", callId: outbound.body.callId });
+          await new Promise((r) => setTimeout(r, gapMs));
+        } else {
+          results.push({ leadId: lead.id, status: "failed" });
+        }
+      }
+      return send(response, 200, { results });
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/vapi/webhook") {
+      const secret = process.env.WEBHOOK_SECRET;
+      if (secret && request.headers["x-vapi-secret"] !== secret) return send(response, 401, { error: "Unauthorized." });
+      const { message = {} } = await readJson(request);
+      const leadId = message.call?.metadata?.leadId;
+      const lead = leadId ? getLead(leadId) : null;
+
+      if (message.type === "tool-calls") {
+        const calls = message.toolCallList || message.toolCalls || [];
+        const results = calls.map((tc) => {
+          const name = tc.name || tc.function?.name;
+          let args = tc.arguments ?? tc.function?.arguments ?? {};
+          if (typeof args === "string") { try { args = JSON.parse(args); } catch { args = {}; } }
+
+    if (request.method === "POST" && url.pathname === "/api/calls/start-all") {
+      const body = await readJson(request);
+      if (body.confirm !== true) return send(response, 400, { error: 'Send {"confirm": true}.' });
+      const gapMs = Number(process.env.SECONDS_BETWEEN_CALLS || 30) * 1000;
+      const limit = Number(body.limit || 20);
+      const results = [];
+      for (const lead of leads) {
+        if (results.filter((r) => r.status === "call_started").length >= limit) break;
+        const blocked = callBlockReason(lead, { callLogs });
+        if (blocked) { results.push({ leadId: lead.id, status: "skipped", reason: blocked }); continue; }
+        const property = requestedProperty(lead);
+        if (!property) { results.push({ leadId: lead.id, status: "skipped", reason: "No property." }); continue; }
+        const outbound = await startOutboundCall({ lead, property });
+        if (outbound.statusCode === 202) {
+          logEvent({ event: "call_started", leadId: lead.id, propertyId: property.id, callId: outbound.body.callId });
+          results.push({ leadId: lead.id, status: "call_started", callId: outbound.body.callId });
+          await new Promise((r) => setTimeout(r, gapMs));
+        } else {
+          results.push({ leadId: lead.id, status: "failed" });
+        }
+      }
+      return send(response, 200, { results });
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/vapi/webhook") {
+      const secret = process.env.WEBHOOK_SECRET;
+      if (secret && request.headers["x-vapi-secret"] !== secret) return send(response, 401, { error: "Unauthorized." });
+      const { message = {} } = await readJson(request);
+      const leadId = message.call?.metadata?.leadId;
+      const lead = leadId ? getLead(leadId) : null;
+
+      if (message.type === "tool-calls") {
+        const calls = message.toolCallList || message.toolCalls || [];
+        const results = calls.map((tc) => {
+          const name = tc.name || tc.function?.name;
+          let args = tc.arguments ?? tc.function?.arguments ?? {};
+      const leadId = message.call?.metadata?.leadId;
+      const lead = leadId ? getLead(leadId) : null;
+
+      if (message.type === "tool-calls") {
+        const calls = message.toolCallList || message.toolCalls || [];
+        const results = calls.map((tc) => {
+          const name = tc.name || tc.function?.name;
+          let args = tc.arguments ?? tc.function?.arguments ?? {};
+          if (typeof args === "string") { try { args = JSON.parse(args); } catch { args = {}; } }
+          let result = "Noted.";
+          if (name === "mark_opt_out" && lead) {
+            applyOptOut(lead);
+            logEvent({ event: "opt_out", leadId, callId: message.call?.id });
+            result = "Opt-out recorded. End call politely.";
+          } else if (name === "request_site_visit") {
+            logEvent({ event: "site_visit_requested", leadId, callId: message.call?.id, preferredTime: args.preferredTime });
+            result = "Visit request saved.";
+          } else if (name === "request_human_callback") {
+            logEvent({ event: "human_callback_requested", leadId, callId: message.call?.id, reason: args.reason });
+          } else if (name === "request_site_visit") {
+            logEvent({ event: "site_visit_requested", leadId, callId: message.call?.id, preferredTime: args.preferredTime });
+            result = "Visit request saved.";
+          } else if (name === "request_human_callback") {
+            logEvent({ event: "human_callback_requested", leadId, callId: message.call?.id, reason: args.reason });
+            result = "Callback request saved.";
+          }
+          return { toolCallId: tc.id, result };
+        });
+        return send(response, 200, { results });
+      }
+
+      if (message.type === "end-of-call-report") {
+        logEvent({
+          event: "call_ended",
+          leadId,
+          callId: message.call?.id,
+          endedReason: message.endedReason,
+          durationSeconds: message.durationSeconds,
+          summary: message.summary || message.analysis?.summary,
+          transcript: message.transcript
+        });
+      }
+      return send(response, 200, { ok: true });
+    }
+      if (message.type === "end-of-call-report") {
+        logEvent({
+          event: "call_ended",
+          leadId,
+          callId: message.call?.id,
+          endedReason: message.endedReason,
+          durationSeconds: message.durationSeconds,
+          summary: message.summary || message.analysis?.summary,
+          transcript: message.transcript
+        });
+      }
+      return send(response, 200, { ok: true });
+    }
+
+    return send(response, 404, { error: "Route not found." });
+  } catch (error) {
+    return send(response, 400, { error: error.message || "Request error." });
+      }
+      return send(response, 200, { ok: true });
+    }
+
+    return send(response, 404, { error: "Route not found." });
+  } catch (error) {
+    return send(response, 400, { error: error.message || "Request error." });
   }
 });
 
@@ -665,7 +1082,7 @@ setInterval(async () => {
   });
 
   if (eligibleLeads.length > 0) {
-    console.log(`[Auto-Pilot] Found ${eligibleLeads.length} leads due for call. Initiating...`);
+    console.log(`[Auto-Pilot] Found ${eligibleLeads.length} leads. Calling...`);
     for (const lead of eligibleLeads) {
       const property = requestedProperty(lead);
       if (!property) continue;
@@ -673,8 +1090,7 @@ setInterval(async () => {
       try {
         const outbound = await startOutboundCall({ lead, property });
         if (outbound.statusCode === 202) {
-          logEvent({ event: "auto_call_started", leadId: lead.id, propertyId: property.id, callId:
-outbound.body.callId });
+          logEvent({ event: "auto_call_started", leadId: lead.id, propertyId: property.id, callId: outbound.body.callId });
           lead.nextCallTime = null;
           saveLeadsFile(leads);
         }
@@ -686,7 +1102,7 @@ outbound.body.callId });
 }, 60000);
 
 server.listen(port, () => {
-  console.log("Builder call agent listening on http://localhost:" + port);
+  console.log("Agent listening on port " + port);
 });
 
-  export { server };
+export { server };
