@@ -64,7 +64,7 @@ const server = http.createServer(async (req, res) => {
     // Bulletproof Admin Route
     const pathName = url.pathname.toLowerCase().replace(/\/$/, "");
     if (req.method === "GET" && pathName === "/admin") {
-      const adminPath = path.join(process.cwd(), "public", "admin.html");
+      const adminPath = path.join(process.cwd(), "..", "public", "admin.html");
       if (fs.existsSync(adminPath)) {
         return res.end(fs.readFileSync(adminPath));
       } else {
