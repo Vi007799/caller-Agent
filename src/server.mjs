@@ -61,22 +61,20 @@ async function readMultipart(req) {
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://localhost");
   try {
-    if (req.method === "GET" && url.pathname === "/admin") {
-        const adminPath = path.join(process.cwd(), "public", "admin.html");
-        console.log("Looking for admin.html at:", adminPath);
-    
-        if (fs.existsSync(adminPath)) {
-          return res.end(fs.readFileSync(adminPath));
-        } else {
-          console.error("FILE NOT FOUND AT:", adminPath);
-          // This will send the actual path to your browser so you can see it!
-          return send(res, 404, {
-            error: "File not found",
-            searchedAt: adminPath,
-            currentDir: process.cwd()
-          });
-        }
+    // Bulletproof Admin Route
+    const pathName = url.pathname.toLowerCase().replace(/\/$/, "");
+    if (req.method === "GET" && pathName === "/admin") {
+      const adminPath = path.join(process.cwd(), "public", "admin.html");
+      if (fs.existsSync(adminPath)) {
+        return res.end(fs.readFileSync(adminPath));
+      } else {
+        return send(res, 404, {
+          error: "File missing on disk",
+          searchedAt: adminPath,
+          currentDir: process.cwd()
+        });
       }
+    }
     if (req.method === "GET" && url.pathname === "/health") {
       return send(res, 200, { status: "ok" });
     }
