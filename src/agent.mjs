@@ -1,4 +1,5 @@
-import { builder, loadAgentScript } from "./data.mjs";
+import { builder } from "./data.mjs";
+import { loadAgentScript } from "./store.mjs";
 
 const OPT_OUT_PATTERN = /\b(do not call|don't call|stop calling|unsubscribe|not interested|mat call|call mat|nahi chahiye|band karo|remove my number|stop messaging)\b/i;
 const HUMAN_PATTERN = /\b(human|person|representative|executive|manager|advisor|sales team|baat karni|expert|specialist)\b/i;
