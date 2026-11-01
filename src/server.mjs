@@ -62,7 +62,7 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://localhost");
   try {
     if (req.method === "GET" && url.pathname === "/admin") {
-      return res.end(fs.readFileSync(path.join("./public", "admin.html")));
+      return res.end(fs.readFileSync(path.join(process.cwd(), "public", "admin.html")));
     }
     if (req.method === "GET" && url.pathname === "/health") {
       return send(res, 200, { status: "ok" });
