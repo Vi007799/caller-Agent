@@ -59,45 +59,47 @@ async function readMultipart(req) {
 }
 
 const server = http.createServer(async (req, res) => {
-  const url = new URL(req.url, "http://localhost");
+  const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+  const pathName = url.pathname.toLowerCase().replace(/\/$/, "");
+
   try {
-    // Bulletproof Admin Route
-    const pathName = url.pathname.toLowerCase().replace(/\/$/, "");
     if (req.method === "GET" && pathName === "/admin") {
-      const possiblePaths = [
-        path.join(process.cwd(), "public", "admin.html"),
-        path.join(process.cwd(), "..", "public", "admin.html"),
-        path.join(process.cwd(), "admin.html"),
-        path.join(process.cwd(), "..", "admin.html"),
-      ];
+      const adminPath = path.join(process.cwd(), "public", "admin.html");
+      if (fs.existsSync(adminPath)) return res.end(fs.readFileSync(adminPath));
+      return send(res, 404, { error: "File missing" });
+    }
 
-      for (const p of possiblePaths) {
-        if (fs.existsSync(p)) {
-          return res.end(fs.readFileSync(p));
-        }
-      }
+    if (req.method === "GET" && pathName === "/health") return send(res, 200, { status: "ok" });
 
-      return send(res, 404, {
-        error: "File not found anywhere",
-        triedPaths: possiblePaths,
-        currentDir: process.cwd()
+    // Admin Authorization
+    if (pathName.startsWith("/api/admin") || pathName === "/api/dashboard") {
+      if (req.headers["x-admin-key"] !== process.env.ADMIN_KEY) return send(res, 401, { error:
+"Unauthorized" });
+    }
+
+    if (pathName === "/api/dashboard") {
+      return send(res, 200, {
+        stats: { leads: leads.length, calls: callLogs.length, siteVisits: 0, callbacks: 0 },
+        leads: leads.map(l => ({ id: l.id, fullName: l.fullName, phone: l.phone, interest:
+l.enquiry?.interest, optOut: l.optOut }))
       });
     }
-    if (req.method === "GET" && url.pathname === "/health") {
-      return send(res, 200, { status: "ok" });
-    }
-    if (url.pathname.startsWith("/api/admin") && req.headers["x-admin-key"] !== process.env.ADMIN_KEY) {
-      return send(res, 401, { error: "Unauthorized" });
-    }
-    if (req.method === "POST" && url.pathname === "/api/admin/leads/update") {
-      const { leadId, updates } = await readJson(req);
-      const l = getLead(leadId);
-      if (!l) return send(res, 404, { error: "Not found" });
-      Object.assign(l, updates);
+
+    if (req.method === "POST" && pathName === "/api/leads") {
+      const body = await readJson(req);
+      const items = Array.isArray(body.leads) ? body.leads : [];
+      const added = [];
+      for (const item of items) {
+        const lead = { id: "ld-"+Date.now(), fullName: item.name, phone: normalizePhone(item.phone),
+enquiry: { interest: item.interest } };
+        leads.push(lead);
+        added.push(lead.id);
+      }
       saveLeadsFile(leads);
-      return send(res, 200, { ok: true });
+      return send(res, 200, { added: added.length });
     }
-    if (req.method === "POST" && url.pathname === "/api/leads/upload") {
+
+    if (req.method === "POST" && pathName === "/api/leads/upload") {
       const files = await readMultipart(req);
       if (!files[0]) return send(res, 400, { error: "No file" });
       const f = files[0];
@@ -106,27 +108,27 @@ const server = http.createServer(async (req, res) => {
         const wb = xlsx.read(f.data, { type: "buffer" });
         data = xlsx.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
       }
+      // Simplified adding for upload
+      data.forEach(d => leads.push({ id: "ld-"+Date.now(), fullName: d.name || d.FullName, phone:
+normalizePhone(d.phone || d.Phone), enquiry: { interest: d.interest || "3 BHK" } }));
+      saveLeadsFile(leads);
       return send(res, 200, { added: data.length });
     }
-    // Simple routing for other API calls
-    if (url.pathname === "/api/leads") return send(res, 200, { leads });
+
+    if (req.method === "POST" && pathName === "/api/admin/script") {
+      const { prompt } = await readJson(req);
+      saveAgentScript({ prompt });
+      return send(res, 200, { ok: true });
+    }
+
+    if (req.method === "GET" && pathName === "/api/admin/script") {
+      return send(res, 200, { script: loadAgentScript()?.prompt || "" });
+    }
 
     return send(res, 404, { error: "Not found" });
   } catch (e) {
     return send(res, 500, { error: e.message });
   }
 });
-
-setInterval(async () => {
-  const now = new Date();
-  const due = leads.filter(l => l.nextCallTime && new Date(l.nextCallTime) <= now);
-  for (const l of due) {
-    try {
-      await startOutboundCall({ lead: l, property: properties[0] });
-      l.nextCallTime = null;
-      saveLeadsFile(leads);
-    } catch (e) {}
-  }
-}, 60000);
 
 server.listen(port, () => console.log("Live on " + port));
