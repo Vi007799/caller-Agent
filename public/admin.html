@@ -4,7 +4,162 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Elite Command | AI Call Center</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+        const BASE_URL = window.location.origin;
+
+        async function attemptLogin() {
+            const key = document.getElementById('login-key').value;
+            if(!key) return alert("Please enter your Admin Key");
+
+            try {
+                // We test the key by trying to load the dashboard
+                const res = await fetch(`${BASE_URL}/api/dashboard`, {
+                    headers: { 'Content-Type': 'application/json', 'x-admin-key': key }
+                });
+
+                if(res.ok) {
+                    console.log("Login successful!");
+                    sessionStorage.setItem('admin_key', key);
+                    document.getElementById('login-screen').style.display = 'none';
+                    document.getElementById('main-dashboard').style.display = 'block';
+                    loadDashboard();
+                    loadScript();
+                } else {
+                    const errData = await res.json();
+                    alert("Access Denied: " + (errData.error || "Invalid Admin Key"));
+                }
+            } catch (e) {
+                console.error("Login error:", e);
+                alert("Could not connect to server. Please check your internet or Render status.");
+            }
+        }
+
+        function logout() {
+            sessionStorage.removeItem('admin_key');
+            location.reload();
+        }
+
+        function getHeaders() {
+            const key = sessionStorage.getItem('admin_key');
+            return key ? { 'Content-Type': 'application/json', 'x-admin-key': key } : null;
+        }
+
+        async function loadDashboard() {
+            const headers = getHeaders();
+            if(!headers) return;
+            try {
+                const res = await fetch(`${BASE_URL}/api/dashboard`, { headers: headers });
+                if (!res.ok) throw new Error("Authentication Failed");
+                const data = await res.json();
+
+                document.getElementById('stat-leads').innerText = data.stats.leads;
+                document.getElementById('stat-calls').innerText = data.stats.calls;
+                document.getElementById('stat-visits').innerText = data.stats.siteVisits;
+                document.getElementById('stat-callbacks').innerText = data.stats.callbacks;
+                document.getElementById('lead-count').innerText = `${data.leads.length} Records`;
+
+                const body = document.getElementById('lead-table-body');
+                if(data.leads.length === 0) {
+                    body.innerHTML = '<tr><td colspan="4" class="py-20 text-center text-slate-600 italic">No leads
+found.</td></tr>';
+                } else {
+                    body.innerHTML = data.leads.map(l => `
+                        <tr class="hover:bg-slate-800/30 transition-all group">
+                            <td class="px-8 py-5 font-semibold text-white">${l.fullName || 'Unknown'}</td>
+                            <td class="px-8 py-5 text-slate-400 font-mono">${l.phone || 'N/A'}</td>
+                            <td class="px-8 py-5 text-slate-300">${l.interest || 'N/A'}</td>
+                            <td class="px-8 py-5">
+                                <span class="status-badge ${l.optOut ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10
+text-green-500'}">
+                                    ${l.optOut ? 'Opted Out' : 'Ready'}
+                                </span>
+                            </td>
+                        </tr>`).join('');
+                }
+            } catch (e) { console.error("Dashboard error:", e); }
+        }
+
+        async function submitLead() {
+            const headers = getHeaders();
+            if(!headers) return;
+            const lead = {
+                name: document.getElementById('l-name').value,
+                phone: document.getElementById('l-phone').value,
+                interest: document.getElementById('l-interest').value
+            };
+            if(!lead.name || !lead.phone) return alert("Name and Phone are required!");
+            try {
+                const res = await fetch(`${BASE_URL}/api/leads`, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({ leads: [lead], consentConfirmed: true })
+                });
+                if(!res.ok) throw new Error("Failed to save lead");
+                closeLeadModal();
+                loadDashboard();
+            } catch(e) { alert(e.message); }
+        }
+
+        async function uploadFile() {
+            const headers = getHeaders();
+            if(!headers) return;
+            const file = document.getElementById('file-upload').files[0];
+            if(!file) return alert("Please select a file!");
+            const formData = new FormData();
+            formData.append('file', file);
+            try {
+                const res = await fetch(`${BASE_URL}/api/leads/upload`, {
+                    method: 'POST',
+                    headers: { 'x-admin-key': sessionStorage.getItem('admin_key') },
+                    body: formData
+                });
+                if(!res.ok) throw new Error("Upload failed");
+                alert("Bulk upload successful!");
+                loadDashboard();
+            } catch(e) { alert(e.message); }
+        }
+
+        async function saveScript() {
+            const headers = getHeaders();
+            if(!headers) return;
+            try {
+                const res = await fetch(`${BASE_URL}/api/admin/script`, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({ prompt: document.getElementById('script-editor').value })
+                });
+                if(!res.ok) throw new Error("Save failed");
+                alert('Persona updated successfully!');
+            } catch(e) { alert(e.message); }
+        }
+
+        async function loadScript() {
+            const headers = getHeaders();
+            if(!headers) return;
+            try {
+                const res = await fetch(`${BASE_URL}/api/admin/script`, { headers: headers });
+                if (res.ok) { const data = await res.json(); document.getElementById('script-editor').value =
+data.script; }
+            } catch (e) {}
+        }
+
+        function openLeadModal() {
+            document.getElementById('l-name').value = '';
+            document.getElementById('l-phone').value = '';
+            document.getElementById('l-interest').value = '';
+            document.getElementById('lead-modal').style.display = 'flex';
+        }
+        function closeLeadModal() { document.getElementById('lead-modal').style.display = 'none'; }
+
+        window.onload = () => {
+            if(sessionStorage.getItem('admin_key')) {
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('main-dashboard').style.display = 'block';
+                loadDashboard();
+                loadScript();
+            }
+        };
+    </script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
 rel="stylesheet">
