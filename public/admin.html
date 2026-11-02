@@ -1,63 +1,188 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Elite Command | AI Call Center</title>
-  <script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elite Command | AI Call Center</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+rel="stylesheet">
+    <style>
+        body { background-color: #020617; color: #f8fafc; font-family: 'Plus Jakarta Sans', sans-serif; }
+        .premium-card { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(51, 65,
+85, 0.5); }
+        .accent-gradient { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
+        .input-field { background: #0f172a; border: 1px solid #334155; color: #f8fafc; transition: all 0.2s; }
+        .input-field:focus { border-color: #3b82f6; outline: none; ring: 2px #3b82f6; }
+        .status-badge { padding: 2px 10px; border-radius: 99px; font-size: 11px; font-weight: 600; text-transform:
+uppercase; }
+        #main-dashboard { display: none; }
+        #lead-modal { display: none; }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <!-- LOGIN SCREEN -->
+    <div id="login-screen" class="fixed inset-0 z-[100] flex items-center justify-center bg-[#020617] p-4">
+        <div class="premium-card p-10 rounded-[40px] max-w-md w-full text-center shadow-2xl border-blue-500/30">
+            <div class="w-20 h-20 accent-gradient rounded-3xl mx-auto mb-6 flex items-center justify-center shadow-lg
+shadow-blue-500/20">
+                <i class="fa-solid fa-shield-halved text-3xl text-white"></i>
+            </div>
+            <h2 class="text-3xl font-extrabold text-white mb-2">Secure Access</h2>
+            <p class="text-slate-400 mb-8">Enter your master admin key to enter the command center.</p>
+            <div class="space-y-4">
+                <input type="password" id="login-key" placeholder="Admin Secret Key" class="w-full input-field p-4
+rounded-2xl text-center text-lg outline-none">
+                <button onclick="attemptLogin()" class="w-full accent-gradient py-4 rounded-2xl font-bold text-white
+transition-all hover:scale-[1.02] active:scale-95 shadow-lg">Unlock Dashboard</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN DASHBOARD -->
+    <div id="main-dashboard" class="p-4 md:p-10 max-w-7xl mx-auto">
+        <nav class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-12">
+            <div>
+                <h1 class="text-4xl font-extrabold tracking-tight text-white mb-1">Elite <span
+class="text-blue-500">Command</span></h1>
+                <p class="text-slate-400 font-medium">Enterprise Real Estate AI Orchestrator</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <button onclick="logout()" class="bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-xl text-sm
+font-medium transition text-slate-400">Logout</button>
+                <button onclick="loadDashboard()" class="accent-gradient px-5 py-2 rounded-xl text-sm font-bold
+text-white transition-all flex items-center gap-2 shadow-lg">Sync Data</button>
+            </div>
+        </nav>
+
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            <div class="premium-card p-6 rounded-3xl"><p class="text-slate-500 text-xs font-bold uppercase mb-1">Total
+Leads</p><h2 id="stat-leads" class="text-3xl font-bold text-white">0</h2></div>
+            <div class="premium-card p-6 rounded-3xl"><p class="text-slate-500 text-xs font-bold uppercase mb-1">Calls
+Made</p><h2 id="stat-calls" class="text-3xl font-bold text-white">0</h2></div>
+            <div class="premium-card p-6 rounded-3xl"><p class="text-slate-500 text-xs font-bold uppercase mb-1">Site
+Visits</p><h2 id="stat-visits" class="text-3xl font-bold text-green-400">0</h2></div>
+            <div class="premium-card p-6 rounded-3xl"><p class="text-slate-500 text-xs font-bold uppercase
+mb-1">Callbacks</p><h2 id="stat-callbacks" class="text-3xl font-bold text-blue-400">0</h2></div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div class="lg:col-span-4 space-y-8">
+                <div class="premium-card p-8 rounded-3xl">
+                    <h3 class="text-lg font-bold text-white mb-6 flex items-center gap-3">
+                        <span class="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center
+text-sm"><i class="fa-solid fa-user-plus"></i></span>
+                        Lead Operations
+                    </h3>
+                    <div class="space-y-4">
+                        <button onclick="openLeadModal()" class="w-full accent-gradient py-4 rounded-2xl font-bold
+text-white transition-all hover:scale-[1.02] active:scale-95 shadow-lg">Add Single Lead</button>
+                        <div class="relative">
+                            <input type="file" id="file-upload" class="hidden" onchange="uploadFile()">
+                            <button onclick="document.getElementById('file-upload').click()" class="w-full bg-slate-800
+hover:bg-slate-700 py-4 rounded-2xl font-medium transition-all border border-slate-700 text-slate-300"><i class="fa-solid
+fa-file-excel mr-2 text-green-400"></i> Bulk Upload (XLSX)</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="premium-card p-8 rounded-3xl">
+                    <h3 class="text-lg font-bold text-white mb-6 flex items-center gap-3">
+                        <span class="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center
+text-sm"><i class="fa-solid fa-brain"></i></span>
+                        Agent Persona
+                    </h3>
+                    <textarea id="script-editor" class="w-full h-64 input-field rounded-2xl p-4 text-sm leading-relaxed
+mb-4"></textarea>
+                    <button onclick="saveScript()" class="w-full bg-slate-100 hover:bg-white py-3 rounded-xl font-bold
+text-slate-900 transition-all">Update Persona</button>
+                </div>
+            </div>
+
+            <div class="lg:col-span-8">
+                <div class="premium-card rounded-3xl overflow-hidden">
+                    <div class="p-8 border-b border-slate-800 flex justify-between items-center">
+                        <h3 class="text-xl font-bold text-white">Lead Registry</h3>
+                        <span id="lead-count" class="bg-blue-500/10 text-blue-400 text-xs font-bold px-3 py-1
+rounded-full">0 Records</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="bg-slate-900/50 text-slate-500 text-xs uppercase tracking-wider">
+                                <tr><th class="px-8 py-4 font-semibold">Lead Name</th><th class="px-8 py-4
+font-semibold">Contact</th><th class="px-8 py-4 font-semibold">Interest</th><th class="px-8 py-4
+font-semibold">Status</th></tr>
+                            </thead>
+                            <tbody id="lead-table-body" class="divide-y divide-slate-800/50">
+                                <tr><td colspan="4" class="py-20 text-center text-slate-600 italic">Syncing
+data...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="lead-modal" class="fixed inset-0 bg-slate-950/90 hidden items-center justify-center p-4 z-[200]
+backdrop-blur-sm">
+        <div class="premium-card p-10 rounded-[40px] max-w-md w-full space-y-8 shadow-2xl">
+            <div class="text-center">
+                <h2 class="text-3xl font-bold text-white mb-2">New Lead</h2>
+                <p class="text-slate-400 text-sm">Add a new prospect to the registry.</p>
+            </div>
+            <div class="space-y-5">
+                <div><label class="text-xs font-bold text-slate-500 uppercase ml-1">Full Name</label><input type="text"
+id="l-name" class="w-full input-field p-4 rounded-2xl mt-1 outline-none"></div>
+                <div><label class="text-xs font-bold text-slate-500 uppercase ml-1">Phone Number</label><input
+type="text" id="l-phone" class="w-full input-field p-4 rounded-2xl mt-1 outline-none"></div>
+                <div><label class="text-xs font-bold text-slate-500 uppercase ml-1">Interest</label><input type="text"
+id="l-interest" class="w-full input-field p-4 rounded-2xl mt-1 outline-none" placeholder="e.g. 3 BHK"></div>
+            </div>
+            <div class="flex gap-4 pt-4">
+                <button onclick="closeLeadModal()" class="flex-1 py-4 rounded-2xl bg-slate-800 hover:bg-slate-700
+transition text-slate-300 font-semibold">Cancel</button>
+                <button onclick="submitLead()" class="flex-1 py-4 rounded-2xl accent-gradient text-white font-bold
+shadow-lg transition-all hover:scale-105 active:scale-95">Save Lead</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
         const BASE_URL = window.location.origin;
-
-        async function attemptLogin() {
-            const key = document.getElementById('login-key').value;
-            if(!key) return alert("Please enter your Admin Key");
-
-            try {
-                // We test the key by trying to load the dashboard
-                const res = await fetch(`${BASE_URL}/api/dashboard`, {
-                    headers: { 'Content-Type': 'application/json', 'x-admin-key': key }
-                });
-
-                if(res.ok) {
-                    console.log("Login successful!");
-                    sessionStorage.setItem('admin_key', key);
-                    document.getElementById('login-screen').style.display = 'none';
-                    document.getElementById('main-dashboard').style.display = 'block';
-                    loadDashboard();
-                    loadScript();
-                } else {
-                    const errData = await res.json();
-                    alert("Access Denied: " + (errData.error || "Invalid Admin Key"));
-                }
-            } catch (e) {
-                console.error("Login error:", e);
-                alert("Could not connect to server. Please check your internet or Render status.");
-            }
-        }
-
-        function logout() {
-            sessionStorage.removeItem('admin_key');
-            location.reload();
-        }
-
         function getHeaders() {
             const key = sessionStorage.getItem('admin_key');
             return key ? { 'Content-Type': 'application/json', 'x-admin-key': key } : null;
         }
 
+        async function attemptLogin() {
+            const key = document.getElementById('login-key').value;
+            if(!key) return alert("Please enter your Admin Key");
+            try {
+                const res = await fetch(`${BASE_URL}/api/dashboard`, { headers: { 'Content-Type': 'application/json',
+'x-admin-key': key } });
+                if(res.ok) {
+                    sessionStorage.setItem('admin_key', key);
+                    document.getElementById('login-screen').style.display = 'none';
+                    document.getElementById('main-dashboard').style.display = 'block';
+                    loadDashboard(); loadScript();
+                } else { alert("Invalid Admin Key"); }
+            } catch (e) { alert("Server Error"); }
+        }
+
+        function logout() { sessionStorage.removeItem('admin_key'); location.reload(); }
+
         async function loadDashboard() {
-            const headers = getHeaders();
-            if(!headers) return;
+            const headers = getHeaders(); if(!headers) return;
             try {
                 const res = await fetch(`${BASE_URL}/api/dashboard`, { headers: headers });
-                if (!res.ok) throw new Error("Authentication Failed");
                 const data = await res.json();
-
                 document.getElementById('stat-leads').innerText = data.stats.leads;
                 document.getElementById('stat-calls').innerText = data.stats.calls;
                 document.getElementById('stat-visits').innerText = data.stats.siteVisits;
                 document.getElementById('stat-callbacks').innerText = data.stats.callbacks;
                 document.getElementById('lead-count').innerText = `${data.leads.length} Records`;
-
                 const body = document.getElementById('lead-table-body');
                 if(data.leads.length === 0) {
                     body.innerHTML = '<tr><td colspan="4" class="py-20 text-center text-slate-600 italic">No leads
@@ -68,74 +193,51 @@ found.</td></tr>';
                             <td class="px-8 py-5 font-semibold text-white">${l.fullName || 'Unknown'}</td>
                             <td class="px-8 py-5 text-slate-400 font-mono">${l.phone || 'N/A'}</td>
                             <td class="px-8 py-5 text-slate-300">${l.interest || 'N/A'}</td>
-                            <td class="px-8 py-5">
-                                <span class="status-badge ${l.optOut ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10
-text-green-500'}">
-                                    ${l.optOut ? 'Opted Out' : 'Ready'}
-                                </span>
-                            </td>
+                            <td class="px-8 py-5"><span class="status-badge ${l.optOut ? 'bg-red-500/10 text-red-500' :
+'bg-green-500/10 text-green-500'}">${l.optOut ? 'Opted Out' : 'Ready'}</span></td>
                         </tr>`).join('');
                 }
-            } catch (e) { console.error("Dashboard error:", e); }
+            } catch (e) { console.error(e); }
         }
 
         async function submitLead() {
-            const headers = getHeaders();
-            if(!headers) return;
-            const lead = {
-                name: document.getElementById('l-name').value,
-                phone: document.getElementById('l-phone').value,
-                interest: document.getElementById('l-interest').value
-            };
+            const headers = getHeaders(); if(!headers) return;
+            const lead = { name: document.getElementById('l-name').value, phone:
+document.getElementById('l-phone').value, interest: document.getElementById('l-interest').value };
             if(!lead.name || !lead.phone) return alert("Name and Phone are required!");
             try {
-                const res = await fetch(`${BASE_URL}/api/leads`, {
-                    method: 'POST',
-                    headers: headers,
-                    body: JSON.stringify({ leads: [lead], consentConfirmed: true })
-                });
-                if(!res.ok) throw new Error("Failed to save lead");
-                closeLeadModal();
-                loadDashboard();
+                const res = await fetch(`${BASE_URL}/api/leads`, { method: 'POST', headers: headers, body:
+JSON.stringify({ leads: [lead], consentConfirmed: true }) });
+                if(!res.ok) throw new Error("Save failed");
+                closeLeadModal(); loadDashboard();
             } catch(e) { alert(e.message); }
         }
 
         async function uploadFile() {
-            const headers = getHeaders();
-            if(!headers) return;
+            const headers = getHeaders(); if(!headers) return;
             const file = document.getElementById('file-upload').files[0];
             if(!file) return alert("Please select a file!");
-            const formData = new FormData();
-            formData.append('file', file);
+            const formData = new FormData(); formData.append('file', file);
             try {
-                const res = await fetch(`${BASE_URL}/api/leads/upload`, {
-                    method: 'POST',
-                    headers: { 'x-admin-key': sessionStorage.getItem('admin_key') },
-                    body: formData
-                });
+                const res = await fetch(`${BASE_URL}/api/leads/upload`, { method: 'POST', headers: { 'x-admin-key':
+sessionStorage.getItem('admin_key') }, body: formData });
                 if(!res.ok) throw new Error("Upload failed");
-                alert("Bulk upload successful!");
-                loadDashboard();
+                alert("Bulk upload successful!"); loadDashboard();
             } catch(e) { alert(e.message); }
         }
 
         async function saveScript() {
-            const headers = getHeaders();
-            if(!headers) return;
+            const headers = getHeaders(); if(!headers) return;
             try {
-                const res = await fetch(`${BASE_URL}/api/admin/script`, {
-                    method: 'POST',
-                    headers: headers,
-                    body: JSON.stringify({ prompt: document.getElementById('script-editor').value })
-                });
+                const res = await fetch(`${BASE_URL}/api/admin/script`, { method: 'POST', headers: headers, body:
+JSON.stringify({ prompt: document.getElementById('script-editor').value }) });
                 if(!res.ok) throw new Error("Save failed");
-                alert('Persona updated successfully!');
+                alert('Persona updated!');
             } catch(e) { alert(e.message); }
         }
 
         async function loadScript() {
-            const headers = getHeaders();
-            if(!headers) return;
+            const headers = getHeaders(); if(!headers) return;
             try {
                 const res = await fetch(`${BASE_URL}/api/admin/script`, { headers: headers });
                 if (res.ok) { const data = await res.json(); document.getElementById('script-editor').value =
@@ -155,343 +257,9 @@ data.script; }
             if(sessionStorage.getItem('admin_key')) {
                 document.getElementById('login-screen').style.display = 'none';
                 document.getElementById('main-dashboard').style.display = 'block';
-                loadDashboard();
-                loadScript();
+                loadDashboard(); loadScript();
             }
         };
     </script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
-rel="stylesheet">
-  <style>
-      body { background-color: #020617; color: #f8fafc; font-family: 'Plus Jakarta Sans', sans-serif; overflow-x:
-hidden; }
-      .premium-card { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(51, 65,
-85, 0.5); }
-      .accent-gradient { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
-      .input-field { background: #0f172a; border: 1px solid #334155; color: #f8fafc; transition: all 0.2s; }
-      .input-field:focus { border-color: #3b82f6; outline: none; ring: 2px #3b82f6; }
-      .status-badge { padding: 2px 10px; border-radius: 99px; font-size: 11px; font-weight: 600; text-transform:
-uppercase; }
-      #main-dashboard { display: none; } /* Hidden until login */
-  </style>
-</head>
-<body class="min-h-screen">
-
-  <!-- LOGIN SCREEN -->
-  <div id="login-screen" class="fixed inset-0 z-[100] flex items-center justify-center bg-[#020617] p-4">
-      <div class="premium-card p-10 rounded-[40px] max-w-md w-full text-center shadow-2xl border-blue-500/30">
-          <div class="w-20 h-20 accent-gradient rounded-3xl mx-auto mb-6 flex items-center justify-center shadow-lg
-shadow-blue-500/20">
-              <i class="fa-solid fa-shield-halved text-3xl text-white"></i>
-          </div>
-          <h2 class="text-3xl font-extrabold text-white mb-2">Secure Access</h2>
-          <p class="text-slate-400 mb-8">Enter your master admin key to enter the command center.</p>
-          <div class="space-y-4">
-              <input type="password" id="login-key" placeholder="Admin Secret Key"
-                     class="w-full input-field p-4 rounded-2xl text-center text-lg outline-none">
-              <button onclick="attemptLogin()" class="w-full accent-gradient py-4 rounded-2xl font-bold text-white
-transition-all hover:scale-[1.02] active:scale-95 shadow-lg">
-                  Unlock Dashboard
-              </button>
-          </div>
-      </div>
-  </div>
-
-  <!-- MAIN DASHBOARD -->
-  <div id="main-dashboard" class="p-4 md:p-10 max-w-7xl mx-auto">
-      <nav class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-12">
-          <div>
-              <h1 class="text-4xl font-extrabold tracking-tight text-white mb-1">Elite <span
-class="text-blue-500">Command</span></h1>
-              <p class="text-slate-400 font-medium">Enterprise Real Estate AI Orchestrator</p>
-          </div>
-          <div class="flex items-center gap-3">
-              <button onclick="logout()" class="bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-xl text-sm
-font-medium transition text-slate-400">
-                  <i class="fa-solid fa-sign-out-alt mr-2"></i> Logout
-              </button>
-              <button onclick="loadDashboard()" class="accent-gradient px-5 py-2 rounded-xl text-sm font-bold
-text-white transition-all flex items-center gap-2 shadow-lg">
-                  <i class="fa-solid fa-sync"></i> Sync Data
-              </button>
-          </div>
-      </nav>
-
-      <!-- STATS -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-          <div class="premium-card p-6 rounded-3xl">
-              <p class="text-slate-500 text-xs font-bold uppercase mb-1">Total Leads</p>
-              <h2 id="stat-leads" class="text-3xl font-bold text-white">0</h2>
-          </div>
-          <div class="premium-card p-6 rounded-3xl">
-              <p class="text-slate-500 text-xs font-bold uppercase mb-1">Calls Made</p>
-              <h2 id="stat-calls" class="text-3xl font-bold text-white">0</h2>
-          </div>
-          <div class="premium-card p-6 rounded-3xl">
-              <p class="text-slate-500 text-xs font-bold uppercase mb-1">Site Visits</p>
-              <h2 id="stat-visits" class="text-3xl font-bold text-green-400">0</h2>
-          </div>
-          <div class="premium-card p-6 rounded-3xl">
-              <p class="text-slate-500 text-xs font-bold uppercase mb-1">Callbacks</p>
-              <h2 id="stat-callbacks" class="text-3xl font-bold text-blue-400">0</h2>
-          </div>
-      </div>
-
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div class="lg:col-span-4 space-y-8">
-              <div class="premium-card p-8 rounded-3xl">
-                  <h3 class="text-lg font-bold text-white mb-6 flex items-center gap-3">
-                      <span class="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center
-text-sm">
-                          <i class="fa-solid fa-user-plus"></i>
-                      </span>
-                      Lead Operations
-                  </h3>
-                  <div class="space-y-4">
-                      <!-- Fixed Button -->
-                      <button id="btn-add-lead" onclick="openLeadModal()" class="w-full accent-gradient py-4
-rounded-2xl font-bold text-white transition-all hover:scale-[1.02] active:scale-95 shadow-lg">
-                          Add Single Lead
-                      </button>
-                      <div class="relative">
-                          <input type="file" id="file-upload" class="hidden" onchange="uploadFile()">
-                          <button onclick="document.getElementById('file-upload').click()" class="w-full bg-slate-800
-hover:bg-slate-700 py-4 rounded-2xl font-medium transition-all border border-slate-700 text-slate-300">
-                              <i class="fa-solid fa-file-excel mr-2 text-green-400"></i> Bulk Upload (XLSX)
-                          </button>
-                      </div>
-                  </div>
-              </div>
-              <div class="premium-card p-8 rounded-3xl">
-                  <h3 class="text-lg font-bold text-white mb-6 flex items-center gap-3">
-                      <span class="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center
-text-sm">
-                          <i class="fa-solid fa-brain"></i>
-                      </span>
-                      Agent Persona
-                  </h3>
-                  <textarea id="script-editor" class="w-full h-64 input-field rounded-2xl p-4 text-sm leading-relaxed
-mb-4" placeholder="Define the agent's professional voice..."></textarea>
-                  <button onclick="saveScript()" class="w-full bg-slate-100 hover:bg-white py-3 rounded-xl font-bold
-text-slate-900 transition-all">Update Persona</button>
-              </div>
-          </div>
-
-          <div class="lg:col-span-8">
-              <div class="premium-card rounded-3xl overflow-hidden">
-                  <div class="p-8 border-b border-slate-800 flex justify-between items-center">
-                      <h3 class="text-xl font-bold text-white">Lead Registry</h3>
-                      <span id="lead-count" class="bg-blue-500/10 text-blue-400 text-xs font-bold px-3 py-1
-rounded-full">0 Records</span>
-                  </div>
-                  <div class="overflow-x-auto">
-                      <table class="w-full text-left border-collapse">
-                          <thead class="bg-slate-900/50 text-slate-500 text-xs uppercase tracking-wider">
-                              <tr>
-                                  <th class="px-8 py-4 font-semibold">Lead Name</th>
-                                  <th class="px-8 py-4 font-semibold">Contact</th>
-                                  <th class="px-8 py-4 font-semibold">Interest</th>
-                                  <th class="px-8 py-4 font-semibold">Status</th>
-                              </tr>
-                          </thead>
-                          <tbody id="lead-table-body" class="divide-y divide-slate-800/50">
-                              <tr><td colspan="4" class="py-20 text-center text-slate-600 italic">Syncing
-data...</td></tr>
-                          </tbody>
-                      </table>
-                  </div>
-              </div>
-          </div>
-      </div>
-  </div>
-
-  <!-- LEAD MODAL -->
-  <div id="lead-modal" class="fixed inset-0 bg-slate-950/90 hidden items-center justify-center p-4 z-50
-backdrop-blur-sm">
-      <div class="premium-card p-10 rounded-[40px] max-w-md w-full space-y-8 shadow-2xl">
-          <div class="text-center">
-              <h2 class="text-3xl font-bold text-white mb-2">New Lead</h2>
-              <p class="text-slate-400 text-sm">Add a new prospect to the registry.</p>
-          </div>
-          <div class="space-y-5">
-              <div>
-                  <label class="text-xs font-bold text-slate-500 uppercase ml-1">Full Name</label>
-                  <input type="text" id="l-name" class="w-full input-field p-4 rounded-2xl mt-1 outline-none">
-              </div>
-              <div>
-                  <label class="text-xs font-bold text-slate-500 uppercase ml-1">Phone Number</label>
-                  <input type="text" id="l-phone" class="w-full input-field p-4 rounded-2xl mt-1 outline-none">
-              </div>
-              <div>
-                  <label class="text-xs font-bold text-slate-500 uppercase ml-1">Interest</label>
-                  <input type="text" id="l-interest" class="w-full input-field p-4 rounded-2xl mt-1 outline-none"
-placeholder="e.g. 3 BHK">
-              </div>
-          </div>
-          <div class="flex gap-4 pt-4">
-              <button onclick="closeLeadModal()" class="flex-1 py-4 rounded-2xl bg-slate-800 hover:bg-slate-700
-transition text-slate-300 font-semibold">Cancel</button>
-              <button onclick="submitLead()" class="flex-1 py-4 rounded-2xl accent-gradient text-white font-bold
-shadow-lg transition-all hover:scale-105 active:scale-95">Save Lead</button>
-          </div>
-      </div>
-  </div>
-
-  <script>
-      const BASE_URL = window.location.origin;
-
-      function attemptLogin() {
-          const key = document.getElementById('login-key').value;
-          if(!key) return alert("Please enter your Admin Key");
-
-          // Store key in session storage for this session
-          sessionStorage.setItem('admin_key', key);
-
-          // Test the key immediately with a health check/dashboard load
-          loadDashboard().then(success => {
-              if(success) {
-                  document.getElementById('login-screen').style.display = 'none';
-                  document.getElementById('main-dashboard').style.display = 'block';
-              } else {
-                  alert("Invalid Admin Key. Please try again.");
-              }
-          });
-      }
-
-      function logout() {
-          sessionStorage.removeItem('admin_key');
-          location.reload();
-      }
-
-      function getHeaders() {
-          const key = sessionStorage.getItem('admin_key');
-          return key ? { 'Content-Type': 'application/json', 'x-admin-key': key } : null;
-      }
-
-      async function loadDashboard() {
-          const headers = getHeaders();
-          if(!headers) return false;
-          try {
-              const res = await fetch(`${BASE_URL}/api/dashboard`, { headers: headers });
-              if (!res.ok) throw new Error("Unauthorized");
-              const data = await res.json();
-
-              document.getElementById('stat-leads').innerText = data.stats.leads;
-              document.getElementById('stat-calls').innerText = data.stats.calls;
-              document.getElementById('stat-visits').innerText = data.stats.siteVisits;
-              document.getElementById('stat-callbacks').innerText = data.stats.callbacks;
-              document.getElementById('lead-count').innerText = `${data.leads.length} Records`;
-
-              const body = document.getElementById('lead-table-body');
-              if(data.leads.length === 0) {
-                  body.innerHTML = '<tr><td colspan="4" class="py-20 text-center text-slate-600 italic">No leads
-found.</td></tr>';
-              } else {
-                  body.innerHTML = data.leads.map(l => `
-                      <tr class="hover:bg-slate-800/30 transition-all group">
-                          <td class="px-8 py-5 font-semibold text-white">${l.fullName || 'Unknown'}</td>
-                          <td class="px-8 py-5 text-slate-400 font-mono">${l.phone || 'N/A'}</td>
-                          <td class="px-8 py-5 text-slate-300">${l.interest || 'N/A'}</td>
-                          <td class="px-8 py-5">
-                              <span class="status-badge ${l.optOut ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10
-text-green-500'}">
-                                  ${l.optOut ? 'Opted Out' : 'Ready'}
-                              </span>
-                          </td>
-                      </tr>`).join('');
-              }
-              return true;
-          } catch (e) {
-              return false;
-          }
-      }
-
-      async function submitLead() {
-          const headers = getHeaders();
-          if(!headers) return;
-
-          const lead = {
-              name: document.getElementById('l-name').value,
-              phone: document.getElementById('l-phone').value,
-              interest: document.getElementById('l-interest').value
-          };
-
-          if(!lead.name || !lead.phone) return alert("Name and Phone are required!");
-
-          try {
-              const res = await fetch(`${BASE_URL}/api/leads`, {
-                  method: 'POST',
-                  headers: headers,
-                  body: JSON.stringify({ leads: [lead], consentConfirmed: true })
-              });
-              if(!res.ok) throw new Error("Failed to save lead");
-              closeLeadModal();
-              loadDashboard();
-          } catch(e) { alert(e.message); }
-      }
-
-      async function uploadFile() {
-          const headers = getHeaders();
-          if(!headers) return;
-          const fileInput = document.getElementById('file-upload');
-          if(!fileInput.files[0]) return alert("Please select a file!");
-
-          const formData = new FormData();
-          formData.append('file', fileInput.files[0]);
-
-          try {
-              const res = await fetch(`${BASE_URL}/api/leads/upload`, {
-                  method: 'POST',
-                  headers: { 'x-admin-key': sessionStorage.getItem('admin_key') },
-                  body: formData
-              });
-              if(!res.ok) throw new Error("Upload failed");
-              alert("Bulk upload successful!");
-              loadDashboard();
-          } catch(e) { alert(e.message); }
-      }
-
-      async function saveScript() {
-          const headers = getHeaders();
-          if(!headers) return;
-          try {
-              const res = await fetch(`${BASE_URL}/api/admin/script`, {
-                  method: 'POST',
-                  headers: headers,
-                  body: JSON.stringify({ prompt: document.getElementById('script-editor').value })
-              });
-              if(!res.ok) throw new Error("Save failed");
-              alert('Persona updated successfully!');
-          } catch(e) { alert(e.message); }
-      }
-
-      async function loadScript() {
-          const headers = getHeaders();
-          if(!headers) return;
-          try {
-              const res = await fetch(`${BASE_URL}/api/admin/script`, { headers: headers });
-              if (res.ok) { const data = await res.json(); document.getElementById('script-editor').value =
-data.script; }
-          } catch (e) {}
-      }
-
-      function openLeadModal() {
-          document.getElementById('l-name').value = '';
-          document.getElementById('l-phone').value = '';
-          document.getElementById('l-interest').value = '';
-          document.getElementById('lead-modal').style.display = 'flex';
-      }
-      function closeLeadModal() { document.getElementById('lead-modal').style.display = 'none'; }
-
-      window.onload = () => {
-          if(sessionStorage.getItem('admin_key')) {
-              document.getElementById('login-screen').style.display = 'none';
-              document.getElementById('main-dashboard').style.display = 'block';
-              loadDashboard();
-              loadScript();
-          }
-      };
-  </script>
 </body>
 </html>
