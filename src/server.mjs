@@ -6,8 +6,8 @@ import { createCallBrief, createInitialState } from "./agent.mjs";
 import { generateTurn } from "./llm.mjs";
 import { startOutboundCall } from "./telephony.mjs";
 import { callBlockReason, normalizePhone } from "./calling-rules.mjs";
-import { appendCallLog, loadCallLogs, saveOptOut, saveWebLead, saveLeadsFile, loadAgentScript,
-saveAgentScript } from "./store.mjs";
+import { appendCallLog, loadCallLogs, saveOptOut, saveWebLead, saveLeadsFile, loadAgentScript, saveAgentScript } from
+"./store.mjs";
 import * as xlsx from "xlsx";
 import * as pdf from "pdf-parse/node";
 
@@ -20,11 +20,6 @@ function logEvent(record) {
   callLogs.push(entry);
   appendCallLog(entry);
   return entry;
-}
-
-function applyOptOut(lead) {
-  lead.optOut = true;
-  saveOptOut(lead.id);
 }
 
 function send(res, code, data) {
@@ -63,34 +58,35 @@ const server = http.createServer(async (req, res) => {
   const pathName = url.pathname.toLowerCase().replace(/\/$/, "");
 
   try {
+    // 1. STATIC FILES (Dashboard)
     if (req.method === "GET" && pathName === "/admin") {
       const adminPath = path.join(process.cwd(), "public", "admin.html");
       if (fs.existsSync(adminPath)) return res.end(fs.readFileSync(adminPath));
-      return send(res, 404, { error: "File missing" });
+      return send(res, 404, { error: "Dashboard file not found" });
     }
 
     if (req.method === "GET" && pathName === "/health") return send(res, 200, { status: "ok" });
 
-    // Admin Authorization
-    if (pathName.startsWith("/api/admin") || pathName === "/api/dashboard") {
-      if (req.headers["x-admin-key"] !== process.env.ADMIN_KEY) return send(res, 401, { error:
-"Unauthorized" });
+    // 2. ADMIN AUTHENTICATION
+    if (pathName.startsWith("/api/admin") || pathName === "/api/dashboard" || pathName === "/api/leads") {
+      if (req.headers["x-admin-key"] !== process.env.ADMIN_KEY) return send(res, 401, { error: "Unauthorized" });
     }
 
+    // 3. API ROUTES
     if (pathName === "/api/dashboard") {
       return send(res, 200, {
         stats: { leads: leads.length, calls: callLogs.length, siteVisits: 0, callbacks: 0 },
-        leads: leads.map(l => ({ id: l.id, fullName: l.fullName, phone: l.phone, interest:
-l.enquiry?.interest, optOut: l.optOut }))
+        leads: leads.map(l => ({ id: l.id, fullName: l.fullName, phone: l.phone, interest: l.enquiry?.interest, optOut:
+l.optOut }))
       });
     }
 
     if (req.method === "POST" && pathName === "/api/leads") {
       const body = await readJson(req);
-      const items = Array.isArray(body.leads) ? body.leads : [];
+      const items = Array.isArray(body.leads) ? body.leads : [body];
       const added = [];
       for (const item of items) {
-        const lead = { id: "ld-"+Date.now(), fullName: item.name, phone: normalizePhone(item.phone),
+        const lead = { id: "ld-"+Date.now()+Math.random(), fullName: item.name, phone: normalizePhone(item.phone),
 enquiry: { interest: item.interest } };
         leads.push(lead);
         added.push(lead.id);
@@ -108,8 +104,7 @@ enquiry: { interest: item.interest } };
         const wb = xlsx.read(f.data, { type: "buffer" });
         data = xlsx.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
       }
-      // Simplified adding for upload
-      data.forEach(d => leads.push({ id: "ld-"+Date.now(), fullName: d.name || d.FullName, phone:
+      data.forEach(d => leads.push({ id: "ld-"+Date.now()+Math.random(), fullName: d.name || d.FullName, phone:
 normalizePhone(d.phone || d.Phone), enquiry: { interest: d.interest || "3 BHK" } }));
       saveLeadsFile(leads);
       return send(res, 200, { added: data.length });
@@ -131,4 +126,4 @@ normalizePhone(d.phone || d.Phone), enquiry: { interest: d.interest || "3 BHK" }
   }
 });
 
-server.listen(port, () => console.log("Live on " + port));
+server.listen(port, () => console.log("Server running on " + port));
