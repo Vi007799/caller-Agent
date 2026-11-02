@@ -1,142 +1,321 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Command Center</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet"
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Call Center | Elite Command</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet"
 href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <style>
-      :root { --bg-dark: #0f172a; --card-dark: #1e293b; }
-      body { background-color: var(--bg-dark); color: #f1f5f9; font-family: 'Inter', sans-serif; }
-      .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid
-rgba(255,255,255,0.1); }
-  </style>
+    <link
+href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+rel="stylesheet">
+    <style>
+        body { background-color: #020617; color: #f8fafc; font-family: 'Plus Jakarta Sans', sans-serif; }
+        .premium-card { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid
+rgba(51, 65, 85, 0.5); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3); }
+        .accent-gradient { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
+        .input-field { background: #0f172a; border: 1px solid #334155; color: #f8fafc; transition: all
+0.2s; }
+        .input-field:focus { border-color: #3b82f6; ring: 2px #3b82f6; outline: none; }
+        .status-badge { padding: 2px 10px; border-radius: 99px; font-size: 11px; font-weight: 600;
+text-transform: uppercase; }
+    </style>
 </head>
-<body class="p-4 md:p-8">
-  <div class="max-w-7xl mx-auto">
-      <header class="flex justify-between items-center mb-8">
-          <div>
-              <h1 class="text-3xl font-bold">AI Command Center</h1>
-              <p class="text-slate-400">Enterprise Outbound Agent</p>
-          </div>
-          <div class="flex gap-3">
-              <input type="password" id="admin-key" placeholder="Enter Admin Key" class="bg-slate-800
-border border-slate-700 px-3 py-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
-              <button onclick="loadDashboard()" class="bg-slate-700 hover:bg-slate-600 px-4 py-2
-rounded-lg transition text-sm">Refresh</button>
-          </div>
-      </header>
+<body class="min-h-screen p-4 md:p-10">
+    <div class="max-w-7xl mx-auto">
+        <!-- TOP NAV -->
+        <nav class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-12">
+            <div>
+                <h1 class="text-4xl font-extrabold tracking-tight text-white mb-1">Elite <span
+class="text-blue-500">Command</span></h1>
+                <p class="text-slate-400 font-medium">Enterprise Real Estate AI Orchestrator</p>
+            </div>
+            <div class="flex items-center gap-3 p-2 bg-slate-900 rounded-2xl border border-slate-800
+shadow-xl">
+                <div class="flex items-center px-3 gap-2">
+                    <i class="fa-solid fa-lock text-slate-500 text-xs"></i>
+                    <input type="password" id="admin-key" placeholder="Admin Secret Key"
+                           class="bg-transparent text-sm text-white outline-none w-40
+placeholder:text-slate-600">
+                </div>
+                <button onclick="loadDashboard()" class="accent-gradient hover:opacity-90 px-5 py-2
+rounded-xl text-sm font-bold transition-all flex items-center gap-2 shadow-lg">
+                    <i class="fa-solid fa-sync"></i> Sync Data
+                </button>
+            </div>
+        </nav>
 
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div class="space-y-8">
-              <section class="glass p-6 rounded-2xl">
-                  <h3 class="text-xl font-semibold mb-4">Lead Operations</h3>
-                  <div class="space-y-3">
-                      <button onclick="openLeadModal()" class="w-full bg-blue-600 py-3 rounded-xl
-font-medium">Add Single Lead</button>
-                      <div class="relative">
-                          <input type="file" id="file-upload" class="hidden" onchange="uploadFile()">
-                          <button onclick="document.getElementById('file-upload').click()" class="w-full
-bg-slate-700 py-3 rounded-xl transition">Upload XLSX/PDF</button>
-                      </div>
-                  </div>
-              </section>
-              <section class="glass p-6 rounded-2xl">
-                  <h3 class="text-xl font-semibold mb-4">Persona</h3>
-                  <textarea id="script-editor" class="w-full h-48 bg-slate-900 border border-slate-700
-rounded-xl p-4 text-sm mb-4"></textarea>
-                  <button onclick="saveScript()" class="w-full bg-green-600 py-2 rounded-lg">Save
-Persona</button>
-              </section>
-          </div>
+        <!-- STATS BAR -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            <div class="premium-card p-6 rounded-3xl">
+                <p class="text-slate-500 text-xs font-bold uppercase mb-1">Total Leads</p>
+                <h2 id="stat-leads" class="text-3xl font-bold text-white">0</h2>
+            </div>
+            <div class="premium-card p-6 rounded-3xl">
+                <p class="text-slate-500 text-xs font-bold uppercase mb-1">Calls Made</p>
+                <h2 id="stat-calls" class="text-3xl font-bold text-white">0</h2>
+            </div>
+            <div class="premium-card p-6 rounded-3xl">
+                <p class="text-slate-500 text-xs font-bold uppercase mb-1">Site Visits</p>
+                <h2 id="stat-visits" class="text-3xl font-bold text-green-400">0</h2>
+            </div>
+            <div class="premium-card p-6 rounded-3xl">
+                <p class="text-slate-500 text-xs font-bold uppercase mb-1">Callbacks</p>
+                <h2 id="stat-callbacks" class="text-3xl font-bold text-blue-400">0</h2>
+            </div>
+        </div>
 
-          <div class="lg:col-span-2 glass p-6 rounded-2xl">
-              <h3 class="text-xl font-semibold mb-6">Lead Registry</h3>
-              <table class="w-full text-left text-sm">
-                  <thead class="text-slate-400 border-b border-slate-700">
-                      <tr><th class="pb-3">Name</th><th class="pb-3">Phone</th><th
-class="pb-3">Interest</th><th class="pb-3">Status</th></tr>
-                  </thead>
-                  <tbody id="lead-table-body" class="divide-y divide-slate-800"></tbody>
-              </table>
-          </div>
-      </div>
-  </div>
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <!-- LEFT SIDEBAR -->
+            <div class="lg:col-span-4 space-y-8">
+                <!-- Lead Ops -->
+                <div class="premium-card p-8 rounded-3xl">
+                    <h3 class="text-lg font-bold text-white mb-6 flex items-center gap-3">
+                        <span class="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center
+justify-center text-sm">
+                            <i class="fa-solid fa-user-plus"></i>
+                        </span>
+                        Lead Operations
+                    </h3>
+                    <div class="space-y-4">
+                        <button onclick="openLeadModal()" class="w-full accent-gradient py-4 rounded-2xl
+font-bold text-white transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg">
+                            Add Single Lead
+                        </button>
+                        <div class="relative">
+                            <input type="file" id="file-upload" class="hidden" onchange="uploadFile()">
+                            <button onclick="document.getElementById('file-upload').click()" class="w-full
+bg-slate-800 hover:bg-slate-700 py-4 rounded-2xl font-medium transition-all border border-slate-700
+text-slate-300">
+                                <i class="fa-solid fa-file-excel mr-2 text-green-400"></i> Bulk Upload
+(XLSX)
+                            </button>
+                        </div>
+                    </div>
+                </div>
 
-  <div id="lead-modal" class="fixed inset-0 bg-black/80 hidden items-center justify-center p-4">
-      <div class="glass p-8 rounded-3xl max-w-md w-full space-y-4">
-          <h2 class="text-2xl font-bold">New Lead</h2>
-          <input type="text" id="l-name" placeholder="Name" class="w-full bg-slate-900 border
-border-slate-700 p-3 rounded-xl">
-          <input type="text" id="l-phone" placeholder="Phone" class="w-full bg-slate-900 border
-border-slate-700 p-3 rounded-xl">
-          <input type="text" id="l-interest" placeholder="Interest" class="w-full bg-slate-900 border
-border-slate-700 p-3 rounded-xl">
-          <div class="flex gap-3">
-              <button onclick="document.getElementById('lead-modal').style.display='none'" class="flex-1
-py-3 rounded-xl bg-slate-700">Cancel</button>
-              <button onclick="submitLead()" class="flex-1 py-3 rounded-xl bg-blue-600
-font-bold">Save</button>
-          </div>
-      </div>
-  </div>
+                <!-- Persona -->
+                <div class="premium-card p-8 rounded-3xl">
+                    <h3 class="text-lg font-bold text-white mb-6 flex items-center gap-3">
+                        <span class="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 flex items-center
+justify-center text-sm">
+                            <i class="fa-solid fa-brain"></i>
+                        </span>
+                        Agent Persona
+                    </h3>
+                    <textarea id="script-editor" class="w-full h-64 input-field rounded-2xl p-4 text-sm
+leading-relaxed mb-4" placeholder="Define the agent's professional voice..."></textarea>
+                    <button onclick="saveScript()" class="w-full bg-slate-100 hover:bg-white py-3
+rounded-xl font-bold text-slate-900 transition-all">
+                        Update Persona
+                    </button>
+                </div>
+            </div>
 
-  <script>
-      const BASE_URL = window.location.origin;
-      function getHeaders() {
-          return { 'Content-Type': 'application/json', 'x-admin-key':
-document.getElementById('admin-key').value };
-      }
+            <!-- RIGHT TABLE -->
+            <div class="lg:col-span-8">
+                <div class="premium-card rounded-3xl overflow-hidden">
+                    <div class="p-8 border-b border-slate-800 flex justify-between items-center">
+                        <h3 class="text-xl font-bold text-white">Lead Registry</h3>
+                        <span id="lead-count" class="bg-blue-500/10 text-blue-400 text-xs font-bold px-3
+py-1 rounded-full">0 Records</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-900/50 text-slate-500 text-xs uppercase
+tracking-wider">
+                                    <th class="px-8 py-4 font-semibold">Lead Name</th>
+                                    <th class="px-8 py-4 font-semibold">Contact</th>
+                                    <th class="px-8 py-4 font-semibold">Interest</th>
+                                    <th class="px-8 py-4 font-semibold">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="lead-table-body" class="divide-y divide-slate-800/50">
+                                <tr><td colspan="4" class="py-20 text-center text-slate-600
+italic">Authenticate and sync to view leads...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-      async function loadDashboard() {
-          try {
-              const res = await fetch(`${BASE_URL}/api/dashboard`, { headers: getHeaders() });
-              if (!res.ok) throw new Error("Unauthorized");
-              const data = await res.json();
-              document.getElementById('lead-table-body').innerHTML = data.leads.map(l => `
-                  <tr class="hover:bg-slate-800/50 transition">
-                      <td class="py-4">${l.fullName}</td><td class="py-4
-text-slate-400">${l.phone}</td><td class="py-4">${l.interest || 'N/A'}</td><td class="py-4">${l.optOut ?
-'Opted Out' : 'Ready'}</td>
-                  </tr>`).join('');
-          } catch (e) { alert(e.message); }
-      }
+    <!-- LEAD MODAL -->
+    <div id="lead-modal" class="fixed inset-0 bg-slate-950/90 hidden items-center justify-center p-4 z-50
+backdrop-blur-sm">
+        <div class="premium-card p-10 rounded-[40px] max-w-md w-full space-y-8 shadow-2xl">
+            <div>
+                <h2 class="text-3xl font-bold text-white mb-2">New Lead</h2>
+                <p class="text-slate-400 text-sm">Fill in the details to add a new prospect.</p>
+            </div>
+            <div class="space-y-5">
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase ml-1">Full Name</label>
+                    <input type="text" id="l-name" class="w-full input-field p-4 rounded-2xl mt-1
+outline-none">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase ml-1">Phone Number</label>
+                    <input type="text" id="l-phone" class="w-full input-field p-4 rounded-2xl mt-1
+outline-none">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase ml-1">Interest</label>
+                    <input type="text" id="l-interest" class="w-full input-field p-4 rounded-2xl mt-1
+outline-none" placeholder="e.g. 3 BHK, Luxury Penthouse">
+                </div>
+            </div>
+            <div class="flex gap-4 pt-4">
+                <button onclick="closeLeadModal()" class="flex-1 py-4 rounded-2xl bg-slate-800
+hover:bg-slate-700 transition text-slate-300 font-semibold">Cancel</button>
+                <button onclick="submitLead()" class="flex-1 py-4 rounded-2xl accent-gradient text-white
+font-bold shadow-lg transition-all hover:scale-105 active:scale-95">Save Lead</button>
+            </div>
+        </div>
+    </div>
 
-      async function submitLead() {
-          const lead = { name: document.getElementById('l-name').value, phone:
-document.getElementById('l-phone').value, interest: document.getElementById('l-interest').value };
-          await fetch(`${BASE_URL}/api/leads`, { method: 'POST', headers: getHeaders(), body:
-JSON.stringify({ leads: [lead], consentConfirmed: true }) });
-          document.getElementById('lead-modal').style.display = 'none';
-          loadDashboard();
-      }
+    <script>
+        const BASE_URL = window.location.origin;
 
-      async function uploadFile() {
-          const file = document.getElementById('file-upload').files[0];
-          const formData = new FormData();
-          formData.append('file', file);
-          await fetch(`${BASE_URL}/api/leads/upload`, { method: 'POST', headers: { 'x-admin-key':
-document.getElementById('admin-key').value }, body: formData });
-          alert("Upload completed!");
-          loadDashboard();
-      }
+        function getAdminKey() {
+            const key = document.getElementById('admin-key').value;
+            if(!key) { alert("Please enter your Admin Secret Key first!"); return null; }
+            return key;
+        }
 
-      async function saveScript() {
-          await fetch(`${BASE_URL}/api/admin/script`, { method: 'POST', headers: getHeaders(), body:
-JSON.stringify({ prompt: document.getElementById('script-editor').value }) });
-          alert("Persona saved!");
-      }
+        function getHeaders() {
+            const key = getAdminKey();
+            return key ? { 'Content-Type': 'application/json', 'x-admin-key': key } : null;
+        }
 
-      async function loadScript() {
-          const res = await fetch(`${BASE_URL}/api/admin/script`, { headers: getHeaders() });
-          if (res.ok) { const data = await res.json(); document.getElementById('script-editor').value =
+        async function loadDashboard() {
+            const headers = getHeaders();
+            if(!headers) return;
+            try {
+                const res = await fetch(`${BASE_URL}/api/dashboard`, { headers: headers });
+                if (!res.ok) throw new Error("Authentication Failed");
+                const data = await res.json();
+
+                document.getElementById('stat-leads').innerText = data.stats.leads;
+                document.getElementById('stat-calls').innerText = data.stats.calls;
+                document.getElementById('stat-visits').innerText = data.stats.siteVisits;
+                document.getElementById('stat-callbacks').innerText = data.stats.callbacks;
+                document.getElementById('lead-count').innerText = `${data.leads.length} Records`;
+
+                const body = document.getElementById('lead-table-body');
+                if(data.leads.length === 0) {
+                    body.innerHTML = '<tr><td colspan="4" class="py-20 text-center text-slate-600">No leads
+found.</td></tr>';
+                } else {
+                    body.innerHTML = data.leads.map(l => `
+                        <tr class="hover:bg-slate-800/30 transition-all group">
+                            <td class="px-8 py-5 font-semibold text-white">${l.fullName || 'Unknown'}</td>
+                            <td class="px-8 py-5 text-slate-400 font-mono">${l.phone || 'N/A'}</td>
+                            <td class="px-8 py-5 text-slate-300">${l.interest || 'N/A'}</td>
+                            <td class="px-8 py-5">
+                                <span class="status-badge ${l.optOut ? 'bg-red-500/10 text-red-500' :
+'bg-green-500/10 text-green-500'}">
+                                    ${l.optOut ? 'Opted Out' : 'Ready'}
+                                </span>
+                            </td>
+                        </tr>`).join('');
+                }
+            } catch (e) { alert(e.message); }
+        }
+
+        async function submitLead() {
+            const headers = getHeaders();
+            if(!headers) return;
+
+            const lead = {
+                name: document.getElementById('l-name').value,
+                phone: document.getElementById('l-phone').value,
+                interest: document.getElementById('l-interest').value
+            };
+
+            if(!lead.name || !lead.phone) return alert("Name and Phone are required!");
+
+            try {
+                const res = await fetch(`${BASE_URL}/api/leads`, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({ leads: [lead], consentConfirmed: true })
+                });
+                if(!res.ok) throw new Error("Failed to save lead");
+                closeLeadModal();
+                loadDashboard();
+            } catch(e) { alert(e.message); }
+        }
+
+        async function uploadFile() {
+            const key = getAdminKey();
+            if(!key) return;
+            const file = document.getElementById('file-upload').files[0];
+            if(!file) return alert("Please select a file!");
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const res = await fetch(`${BASE_URL}/api/leads/upload`, {
+                    method: 'POST',
+                    headers: { 'x-admin-key': key },
+                    body: formData
+                });
+                if(!res.ok) throw new Error("Upload failed");
+                alert("Bulk upload successful!");
+                loadDashboard();
+            } catch(e) { alert(e.message); }
+        }
+
+        async function saveScript() {
+            const headers = getHeaders();
+            if(!headers) return;
+            try {
+                const res = await fetch(`${BASE_URL}/api/admin/script`, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({ prompt: document.getElementById('script-editor').value })
+                });
+                if(!res.ok) throw new Error("Save failed");
+                alert('Persona updated successfully!');
+            } catch(e) { alert(e.message); }
+        }
+
+        async function loadScript() {
+            const headers = getHeaders();
+            if(!headers) return;
+            try {
+                const res = await fetch(`${BASE_URL}/api/admin/script`, { headers: headers });
+                if (res.ok) { const data = await res.json(); document.getElementById('script-editor').value
+= data.script; }
+            } catch (e) {}
+        }
+
+        function openLeadModal() {
+            try {
+                const res = await fetch(`${BASE_URL}/api/admin/script`, { headers: headers });
+                if (res.ok) { const data = await res.json(); document.getElementById('script-editor').value =
 data.script; }
-      }
+            } catch (e) {}
+        }
 
-      function openLeadModal() { document.getElementById('lead-modal').style.display = 'flex'; }
-      window.onload = () => { loadDashboard(); loadScript(); };
-  </script>
+        function openLeadModal() {
+            // CLEAR FIELDS TO PREVENT AUTO-FILL
+            document.getElementById('l-name').value = '';
+            document.getElementById('l-phone').value = '';
+            document.getElementById('l-interest').value = '';
+            document.getElementById('lead-modal').style.display = 'flex';
+        }
+        function closeLeadModal() { document.getElementById('lead-modal').style.display = 'none'; }
+
+        window.onload = () => {
+            loadDashboard();
+            loadScript();
+        };
+    </script>
 </body>
-  </html>
+</html>
