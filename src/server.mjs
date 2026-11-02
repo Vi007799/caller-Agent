@@ -51,15 +51,6 @@ const server = http.createServer(async (req, res) => {
   const pathName = url.pathname.toLowerCase().replace(/\/$/, "");
 
   try {
-    // DEBUG ENDPOINT: Use this to check if your key is set correctly
-    if (pathName === "/debug-key") {
-      return send(res, 200, {
-        keySet: !!process.env.ADMIN_KEY,
-        length: process.env.ADMIN_KEY ? process.env.ADMIN_KEY.length : 0,
-        hint: process.env.ADMIN_KEY ? `Starts with ${process.env.ADMIN_KEY[0]}` : "Key is missing"
-      });
-    }
-
     if (req.method === "GET" && pathName === "/admin") {
       const adminPath = path.join(process.cwd(), "public", "admin.html");
       if (fs.existsSync(adminPath)) return res.end(fs.readFileSync(adminPath));
@@ -68,8 +59,14 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "GET" && pathName === "/health") return send(res, 200, { status: "ok" });
 
+    // SAFE-MATCH AUTHENTICATION
     if (pathName.startsWith("/api/admin") || pathName === "/api/dashboard" || pathName === "/api/leads") {
-      if (req.headers["x-admin-key"] !== process.env.ADMIN_KEY) return send(res, 401, { error: "Unauthorized" });
+      const providedKey = (req.headers["x-admin-key"] || "").trim();
+      const secretKey = (process.env.ADMIN_KEY || "").trim();
+
+      if (!secretKey || providedKey !== secretKey) {
+        return send(res, 401, { error: "Unauthorized" });
+      }
     }
 
     if (pathName === "/api/dashboard") {
