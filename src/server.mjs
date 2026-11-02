@@ -64,16 +64,24 @@ const server = http.createServer(async (req, res) => {
     // Bulletproof Admin Route
     const pathName = url.pathname.toLowerCase().replace(/\/$/, "");
     if (req.method === "GET" && pathName === "/admin") {
-      const adminPath = path.join(process.cwd(), "..", "public", "admin.html");
-      if (fs.existsSync(adminPath)) {
-        return res.end(fs.readFileSync(adminPath));
-      } else {
-        return send(res, 404, {
-          error: "File missing on disk",
-          searchedAt: adminPath,
-          currentDir: process.cwd()
-        });
+      const possiblePaths = [
+        path.join(process.cwd(), "public", "admin.html"),
+        path.join(process.cwd(), "..", "public", "admin.html"),
+        path.join(process.cwd(), "admin.html"),
+        path.join(process.cwd(), "..", "admin.html"),
+      ];
+
+      for (const p of possiblePaths) {
+        if (fs.existsSync(p)) {
+          return res.end(fs.readFileSync(p));
+        }
       }
+
+      return send(res, 404, {
+        error: "File not found anywhere",
+        triedPaths: possiblePaths,
+        currentDir: process.cwd()
+      });
     }
     if (req.method === "GET" && url.pathname === "/health") {
       return send(res, 200, { status: "ok" });
