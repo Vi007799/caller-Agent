@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise AI Call Center | Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root { --bg-dark: #0f172a; --card-dark: #1e293b; --accent: #3b82f6; }
+        body { background-color: var(--bg-dark); color: #f1f5f9; font-family: 'Inter', sans-serif; }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid
+rgba(255,255,255,0.1); }
+        .status-pill { padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+        .status-live { background: #065f46; color: #34d399; }
+        .status-offline { background: #7f1d1d; color: #f87171; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-3xl font-bold tracking-tight">AI Command Center</h1>
+                <p class="text-slate-400">Real-Estate Outbound Orchestrator</p>
+            </div>
+            <div class="flex items-center gap-4">
+                <div id="system-status" class="status-pill status-offline">Checking System...</div>
+                <button onclick="loadDashboard()" class="bg-slate-700 hover:bg-slate-600 px-4 py-2
+rounded-lg transition text-sm">
+                    <i class="fa-solid fa-rotate"></i> Refresh
+                </button>
+            </div>
+        </header>
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8" id="stats-grid">
+            <div class="glass p-6 rounded-2xl">
+                <p class="text-slate-400 text-sm">Total Leads</p>
+                <h2 id="stat-leads" class="text-3xl font-bold">0</h2>
+            </div>
+            <div class="glass p-6 rounded-2xl">
+                <p class="text-slate-400 text-sm">Total Calls</p>
+                <h2 id="stat-calls" class="text-3xl font-bold">0</h2>
+            </div>
+            <div class="glass p-6 rounded-2xl">
+                <p class="text-slate-400 text-sm">Site Visits</p>
+                <h2 id="stat-visits" class="text-3xl font-bold text-green-400">0</h2>
+            </div>
+            <div class="glass p-6 rounded-2xl">
+                <p class="text-slate-400 text-sm">Callbacks</p>
+                <h2 id="stat-callbacks" class="text-3xl font-bold text-blue-400">0</h2>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left: Wave Controller & Script -->
+            <div class="space-y-8">
+                <section class="glass p-6 rounded-2xl">
+                    <h3 class="text-xl font-semibold mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-wave-square text-blue-400"></i> Wave Controller
+                    </h3>
+                    <div class="grid grid-cols-1 gap-3">
+                        <button onclick="runWave('all_eligible')" class="w-full bg-blue-600
+hover:bg-blue-500 py-3 rounded-xl font-medium transition">Start All Eligible</button>
+                        <button onclick="runWave('callback_requested')" class="w-full bg-slate-700
+hover:bg-slate-600 py-3 rounded-xl transition text-sm">Callback Requests</button>
+                        <button onclick="runWave('no_response')" class="w-full bg-slate-700
+hover:bg-slate-600 py-3 rounded-xl transition text-sm">No Response Follow-up</button>
+                        <button onclick="runWave('scheduled')" class="w-full bg-slate-700
+hover:bg-slate-600 py-3 rounded-xl transition text-sm">Scheduled Calls</button>
+                    </div>
+                </section>
+
+                <section class="glass p-6 rounded-2xl">
+                    <h3 class="text-xl font-semibold mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-file-lines text-blue-400"></i> Agent Persona
+                    </h3>
+                    <textarea id="script-editor" class="w-full h-64 bg-slate-900 border border-slate-700
+rounded-xl p-4 text-sm text-slate-300 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Enter
+system prompt..."></textarea>
+                    <button onclick="saveScript()" class="w-full mt-4 bg-green-600 hover:bg-green-500 py-2
+rounded-lg font-medium transition">Save Persona</button>
+                </section>
+            </div>
+
+            <!-- Right: Lead Registry -->
+            <div class="lg:col-span-2 space-y-8">
+                <section class="glass p-6 rounded-2xl">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-semibold">Lead Registry</h3>
+                        <button onclick="openLeadModal()" class="bg-blue-600 hover:bg-blue-500 px-4 py-2
+rounded-lg text-sm font-medium transition">
+                            <i class="fa-solid fa-plus"></i> Add Lead
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead class="text-slate-400 border-b border-slate-700">
+                                <tr>
+                                    <th class="pb-3 font-medium">Name</th>
+                                    <th class="pb-3 font-medium">Phone</th>
+                                    <th class="pb-3 font-medium">Interest</th>
+                                    <th class="pb-3 font-medium">Status</th>
+                                    <th class="pb-3 font-medium text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="lead-table-body" class="divide-y divide-slate-800">
+                                <!-- Leads injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lead Modal -->
+    <div id="lead-modal" class="fixed inset-0 bg-black/80 hidden items-center justify-center p-4 z-50">
+        <div class="glass p-8 rounded-3xl max-w-md w-full space-y-6">
+            <h2 class="text-2xl font-bold" id="modal-title">Add New Lead</h2>
+            <div class="space-y-4">
+                <input type="text" id="lead-name" placeholder="Full Name" class="w-full bg-slate-900 border
+border-slate-700 p-3 rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                <input type="text" id="lead-phone" placeholder="Phone (10 digits)" class="w-full
+bg-slate-900 border border-slate-700 p-3 rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                <input type="text" id="lead-interest" placeholder="Interest (e.g. 3 BHK)" class="w-full
+bg-slate-900 border border-slate-700 p-3 rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                <div class="flex items-center gap-2 text-sm text-slate-400">
+                    <input type="checkbox" id="lead-consent">
+                    <label for="lead-consent">I confirm this lead has consented to calls</label>
+                </div>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="closeLeadModal()" class="flex-1 py-3 rounded-xl bg-slate-700
+hover:bg-slate-600 transition">Cancel</button>
+                <button onclick="submitLead()" class="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-500
+transition font-bold">Save Lead</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = "your_admin_key_here"; // This should be handled by headers in actual use
+        const BASE_URL = window.location.origin;
+
+        async function checkHealth() {
+            try {
+                const res = await fetch(`${BASE_URL}/health`);
+                if (res.ok) {
+                    document.getElementById('system-status').className = 'status-pill status-live';
+                    document.getElementById('system-status').innerText = 'System Live';
+                }
+            } catch {
+                document.getElementById('system-status').className = 'status-pill status-offline';
+                document.getElementById('system-status').innerText = 'System Offline';
+            }
+        }
+
+        async function loadDashboard() {
+            try {
+                const res = await fetch(`${BASE_URL}/api/dashboard`, { headers: { 'x-admin-key': API_KEY }
+});
+                const data = await res.json();
+
+                document.getElementById('stat-leads').innerText = data.stats.leads;
+                document.getElementById('stat-calls').innerText = data.stats.calls;
+                document.getElementById('stat-visits').innerText = data.stats.siteVisits;
+                document.getElementById('stat-callbacks').innerText = data.stats.callbacks;
+
+                const body = document.getElementById('lead-table-body');
+                body.innerHTML = data.leads.map(l => `
+                    <tr class="hover:bg-slate-800/50 transition">
+                        <td class="py-4 font-medium">${l.fullName}</td>
+                        <td class="py-4 text-slate-400">${l.phone}</td>
+                        <td class="py-4">${l.interest || 'N/A'}</td>
+                        <td class="py-4">
+                            <span class="status-pill ${l.optOut ? 'status-offline' : 'status-live'}">
+                                ${l.optOut ? 'Opted Out' : 'Ready'}
+                            </span>
+                        </td>
+                        <td class="py-4 text-right">
+                            <button class="text-slate-400 hover:text-white transition"><i class="fa-solid
+fa-pen-to-square"></i></button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (e) {
+                console.error("Dashboard load failed", e);
+            }
+        }
+
+        async function runWave(type) {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerText = 'Calling...';
+            try {
+                await fetch(`${BASE_URL}/api/admin/run-wave`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'x-admin-key': API_KEY },
+                    body: JSON.stringify({ waveType: type })
+                });
+                alert(`Wave ${type} initiated successfully!`);
+            } catch (e) {
+                alert('Error running wave');
+            }
+            btn.disabled = false;
+            btn.innerText = type === 'all_eligible' ? 'Start All Eligible' : 'Run Wave';
+            loadDashboard();
+        }
+
+        async function saveScript() {
+            const prompt = document.getElementById('script-editor').value;
+            await fetch(`${BASE_URL}/api/admin/script`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-admin-key': API_KEY },
+                body: JSON.stringify({ prompt })
+            });
+            alert('Persona updated!');
+        }
+
+        async function loadScript() {
+            const res = await fetch(`${BASE_URL}/api/admin/script`, { headers: { 'x-admin-key': API_KEY }
+});
+            const data = await res.json();
+            document.getElementById('script-editor').value = data.script;
+        }
+
+        function openLeadModal() { document.getElementById('lead-modal').style.display = 'flex'; }
+        function closeLeadModal() { document.getElementById('lead-modal').style.display = 'none'; }
+
+        async function submitLead() {
+            const lead = {
+                name: document.getElementById('lead-name').value,
+                phone: document.getElementById('lead-phone').value,
+                interest: document.getElementById('lead-interest').value,
+                language: 'hinglish'
+            };
+            const consent = document.getElementById('lead-consent').checked;
+
+            await fetch(`${BASE_URL}/api/leads`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-admin-key': API_KEY },
+                body: JSON.stringify({ leads: [lead], consentConfirmed: consent })
+            });
+            closeLeadModal();
+            loadDashboard();
+        }
+
+        window.onload = () => {
+            checkHealth();
+            loadDashboard();
+            loadScript();
+            setInterval(checkHealth, 30000);
+        };
+    </script>
+</body>
+</html>
